@@ -90,7 +90,7 @@ static void process_lfo(int track)
 			// If 1->0 transition we need to add a signal to start the LFO
 			if (lfo_type[track] == 0)
 				// Send a controller 1 if pitch LFO
-				midi.add_controller(track, 1, (lfo_depth[track] < 16) ? lfo_depth[track] * 8 : 127);
+				midi.add_controller(track, 1, (lfo_depth[track] < 16) ? lfo_depth[track] * 10 : 127);
 			else
 				// Send a channel aftertouch otherwise
 				midi.add_chanaft(track, (lfo_depth[track] < 16) ? lfo_depth[track] * 8 : 127);
