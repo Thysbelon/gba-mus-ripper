@@ -33,7 +33,7 @@ static int lfo_delay[16];
 static int lfo_depth[16];
 static int lfo_type[16];
 static bool lfo_flag[16];
-static bool lfo_hack[16];
+static int lfo_startup[16];
 
 static unsigned int simultaneous_notes_ctr = 0;
 static unsigned int simultaneous_notes_max = 0;
@@ -109,7 +109,7 @@ static void start_lfo(int track)
 static void stop_lfo(int track)
 {
 	// Cancel a LFO if it was playing,
-	if (sv && lfo_flag[track])
+	if (sv && lfo_flag[track] && lfo_delay[track] != 0)
 	{
 		if (lfo_type[track] == 0)
 			midi.add_controller(track, 1, 0);
@@ -230,6 +230,28 @@ static uint32_t get_GBA_pointer()
 
 static void process_event(int track)
 {
+	auto updateStartupLFO = [&]()
+	{
+		if (lfo_startup[track] > 0)
+		{
+			if (lfo_delay[track] == 0)
+			{
+				if (lfo_type[track] == 0)
+					midi.add_controller(track, 1, lfo_startup[track]);
+				else
+					midi.add_chanaft(track, lfo_startup[track]);
+			}
+
+			lfo_startup[track] = 0;
+		}
+	};
+
+	if (lfo_delay[track] > 0)
+	{
+		updateStartupLFO();
+	}
+
+
 	// Length table for notes and rests
 	const int lenTbl[] =
 	{
@@ -323,6 +345,7 @@ static void process_event(int track)
 	// Note on with specified length command
 	if (command >= 0xd0)
 	{
+		updateStartupLFO();
 		int key, vel, len_ofs = 0;
 		// Is arg1 a key value ?
 		if (arg1 < 0x80)
@@ -435,7 +458,11 @@ static void process_event(int track)
 		case 0xc4:
 			if (sv)
 			{
-				if (lfo_delay[track] == 0 && lfo_hack[track])
+				if (counter[track] <= 0)
+				{
+					lfo_startup[track] = (arg1 > 12 ? 127 : 10 * arg1);
+				}
+				else
 				{
 					if (lfo_type[track]==0)
 						midi.add_controller(track, 1, arg1>12 ? 127 : 10 * arg1);
@@ -447,7 +474,6 @@ static void process_event(int track)
 				lfo_depth[track] = arg1;
 				// I had a stupid bug with LFO inserting controllers I didn't want at the start of files
 				// So I made a terrible quick fix for it, in the mean time I can find something better to prevent it.
-				lfo_hack[track] = true;
 			}
 			else
 				midi.add_controller(track, 1, arg1);
