@@ -1,11 +1,11 @@
-# gba-mus-ripper
+ gba-mus-ripper
 An up-to-date fork of Bregalad's "GBA Mus Ripper" program.
 
 =======================================
 
-GBA Mus Ripper by Bregalad and CaptainSwag101 (updated by berg8793)
+GBA Mus Ripper by Bregalad and CaptainSwag101 (updated by berg8793 and IAG)
 
-Release 3.4; September 10, 2020
+Development 4.0; July 15th, 2024
 
 =======================================
 

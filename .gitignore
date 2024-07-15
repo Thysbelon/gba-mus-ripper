@@ -1,7 +1,7 @@
 # Build directories
 
 out/
-build/
+bin/
 
 # C++ objects and libs
 
