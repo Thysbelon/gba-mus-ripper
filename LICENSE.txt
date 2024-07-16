@@ -1,4 +1,4 @@
-# MIT-ish License
+MIT-ish License
 
 Copyright (C) 2010-2024 Bregalad, CaptainSwag101, berg8793, and IAG
 
