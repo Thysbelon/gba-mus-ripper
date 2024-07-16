@@ -187,8 +187,8 @@ void SF2::add_new_sample(FILE *file, SampleType type, const char *name, uint32_t
 	else
 	{
 		dir_end = dir_offset + size;
-		dir_loop_end = 0;
-		dir_loop_start = 0;
+		dir_loop_end = dir_offset + size;
+		dir_loop_start = dir_offset;
 	}
 
 	// Create sample header and add it to the list
