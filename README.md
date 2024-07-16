@@ -1,135 +1,135 @@
- gba-mus-ripper
-An up-to-date fork of Bregalad's "GBA Mus Ripper" program.
-
-=======================================
+# GBA Mus Ripper 
 
 GBA Mus Ripper by Bregalad and CaptainSwag101 (updated by berg8793 and IAG)
 
 Development 4.0; July 15th, 2024
 
-=======================================
+---
 
 GBA Mus Ripper is a suite of programs to rip music from Game Boy Advance (GBA) games using the "Sappy" sound engine, a really common engine among commercial GBA games.
 Music rippers from GBA games already exists, but this one is more complete and versatile, and less buggy than the existing ones (as for the date of writing this).
 It's the first one that actually converts instruments to SoundFont format, including GameBoy instruments.
 
-GBAMusRipper is free and open source software. Anyone is free to redistribute it (with and without sources) and to improve it but just give me (Bregalad) credit, THANK YOU VERY MUCH.
+---
 
-Applications:
+## Applications:
+
 - Listen to GBA music with higher quality sound hardware than a GBA or an emulated GBA which only have 8-bit sound
 - Make other music sound like a GBA game.
 - Simply get music sheets of GBA games.
 
 The tools come in the form of 4 separate executable files.
 
-IMPORTANT NOTE: The "gba_mus_ripper" executable simply calls the other 3 executables in the process of ripping the music, so even if you're among the 99% of users that will only use "gba_mus_ripper.exe" and never touch the other 3 executables, do NOT remove, move or rename them, because "gba_mus_ripper.exe" would also stop working!
+IMPORTANT NOTE: The "gba_mus_ripper" executable simply calls the other 3 executables in the process of ripping the music, so even if you're among the 99% of users that will only use "gba_mus_ripper" and never touch the other 3 executables, do NOT remove, move or rename them, because "gba_mus_ripper" would also stop working!
 
-== 1) GBA Mus Ripper ==
+---
+
+### 1) GBA Mus Ripper
 
 This is the main program which does everything automatically. Normally you'd only want to use this one, but the other 3 sub-programs can also be used individually too.
 This program detects the presence of the sappy sound engine in a given ROM, and converts all detected songs to .mid files, and rip all detected sound banks to a .sf2 file.
 
-!!! HOW TO USE THIS PROGRAM !!!
+# HOW TO USE THIS PROGRAM
 
 On Windows, you should open a console prompt in the folder containing the ".exe" files.
 To do this, first search "Command Prompt" in the Start bar and open its file location. This will take you to the Command Prompt shortcut location in Windows Explorer.
 Next, right-click on "Command Prompt", select "Properties", then select "Open File Location" in the new pop-up window.
 This will take you to the "system32" folder where "cmd.exe" is located. From there, it's a quick copy-and-paste into the folder containing the GBA Mus Ripper ".exe" files and you're good to go.
 
-Now that the console prompt is open in your folder, type the following (minus brackets or parentheses):
+Now that the console prompt is open in your folder, type the following (minus brackets or parentheses): `gba_mus_ripper (input_file) [-o output_directory] [address] [flags]`
 
-gba_mus_ripper (input_file) [-o output_directory] [address] [flags]
+`input_file`: The FULL path name (in quotes) of the GBA ROM you want to rip from. (Hint: You can drag and drop the ROM into the command line)
 
-input_file: The FULL path name (in quotes) of the GBA ROM you want to rip from. (Hint: You can drag and drop the ROM into the command line)
+`output_directory`: Again, a FULL path name (in quotes) of where you want MIDIs and soundfonts to be saved. If this parameter is not specified, the output directory will automatically be the same folder as where your ROM is located.
 
-output_directory: Again, a FULL path name (in quotes) of where you want MIDIs and soundfonts to be saved. If this parameter is not specified, the output directory will automatically be the same folder as where your ROM is located.
-
-address: This is an offset address in hexadecimal format for when the sappy detector doesn't work and you have to rip a ROM semi-manually (see said section below for more details).
+`address`: This is an offset address in hexadecimal format for when the sappy detector doesn't work and you have to rip a ROM semi-manually (see said section below for more details).
 
 The following flag options are available:
 
--gm : Give General MIDI names to presets. Note that this will only change the names and will NOT
+`-gm` : Give General MIDI names to presets. Note that this will only change the names and will NOT
       magically turn the soundfont into a General MIDI compliant soundfont.
       
--xg : Output MIDI will be compliant to XG standard (instead of default GS standard)
+`-xg` : Output MIDI will be compliant to XG standard (instead of default GS standard)
 
--rc : Rearrange channels in output MIDIs so channel 10 is avoided. Needed by sound
+`-rc` : Rearrange channels in output MIDIs so channel 10 is avoided. Needed by sound
       cards where it's impossible to disable "drums" on channel 10 even with GS or XG commands
       
--sb : Separate banks. Every sound bank is ripper to a different .sf2 file and placed
+`-sb` : Separate banks. Every sound bank is ripper to a different .sf2 file and placed
       into different sub-folders (instead of doing it in a single .sf2 file and a single folder)
       
--raw : Output MIDIs exactly as they're encoded in ROM, without linearise volume and
+`-raw` : Output MIDIs exactly as they're encoded in ROM, without linearise volume and
        velocities and without simulating vibratos.
 
 On Linux, you should first compile the program yourself. See compilation notes a few chapters below.
 Once the program is compiled into executable form, its usage is identical.
 
-== 2) Sappy Detector ==
+### 2) Sappy Detector
 
 This program is here to detect the sappy sound engine. If an engine is found, it prints info about how the game uses the engine on the screen. This is the easiest way to know if a given GBA games use the sappy sound engine or not.
 
-Usage: sappy_detector game.gba
+Usage: `sappy_detector game.gba`
 
-== 3) Song Ripper ==
+### 3) Song Ripper
 
 This program rips sequence data from a GBA game using sappy sound engine to MIDI (.mid) format. You'd typically use this if you'd like to get the spreadsheet of a particular song with more options available than a plain dump with the default parameters from GBA Mus Ripper.
 
-Usage:
-song_ripper infile.gba outfile.mid song_address [flags]
+Usage: `song_ripper infile.gba outfile.mid song_address [flags]`
 
--b[n] : Bank: forces all patches to be in the specified bank (0-127)
+`-b[n]` : Bank: forces all patches to be in the specified bank (0-127)
 
--gm : Give General MIDI names to presets. Note that this will only change the names and will NOT magically turn the soundfont into a General MIDI compliant soundfont.
+`-gm` : Give General MIDI names to presets. Note that this will only change the names and will NOT magically turn the soundfont into a General MIDI compliant soundfont.
 
 In general MIDI, midi channel 10 is reserved for drums. Unfortunately, we do not want to use any "drums" in the output file. I have 3 modes to fix this problem:
 
--rc : Rearrange Channels. This will avoid using the channel 10, and use it at last ressort only if all 16 channels should be used
+`-rc` : Rearrange Channels. This will avoid using the channel 10, and use it at last ressort only if all 16 channels should be used
 
--gs : This will send a GS system exclusive message to tell the player channel 10 is not "drums"
+`-gs` : This will send a GS system exclusive message to tell the player channel 10 is not "drums"
 
--xg : This will send a XG system exclusive message, and force banks number which will disable "drums"
+`-xg` : This will send a XG system exclusive message, and force banks number which will disable "drums"
 
--lv : Linearise volume and velocities. This should be used to have the output "sound" like the original song, but shouldn't be used to get an exact dump of sequence data.
+`-lv` : Linearise volume and velocities. This should be used to have the output "sound" like the original song, but shouldn't be used to get an exact dump of sequence data.
 
--sv : Simulate vibrato. This will insert controllers in real time to simulate a vibrato, instead of just when commands are given. Like -lv, this should be used to have the output "sound" like the original song,but shouldn't be used to get an exact dump of sequence data.
+`-sv` : Simulate vibrato. This will insert controllers in real time to simulate a vibrato, instead of just when commands are given. Like -lv, this should be used to have the output "sound" like the original song,but shouldn't be used to get an exact dump of sequence data.
 
-== 4) Sound Font Ripper ==
+### 4) Sound Font Ripper
 
 Dumps a sound bank (or a list of sound banks) from a GBA game which is using the sappy sound engine to SoundFont 2.0 (.sf2) format. You'd typically use this to get a SoundFont dump of data within a GBA game directly without dumping any other data.
 
-Usage:
-sound_font_ripper in.gba out.sf2 [flags] address1 [address2] ....
+Usage: `sound_font_ripper in.gba out.sf2 [flags] address1 [address2] ....`
 
 Instruments at address1 will be dumped to Bank0, instruments at address2 to Bank1, etc.....
 
 Flags:
 
--v : verbose: Display info about the sound font in text format. If -v is followed directly by a file name (as in -vmyfile.txt), info is printed to the specified file instead.
+`-v` : verbose: Display info about the sound font in text format. If `-v` is followed directly by a file name (as in `-vmyfile.txt`), info is printed to the specified file instead.
 
--s : Sampling rate for samples. Default: 22050 Hz
+`-s` : Sampling rate for samples. Default: 22050 Hz
 
--gm : Give General MIDI names to presets. Note that this will only change the names and will NOT magically turn the soundfont into a General MIDI compliant soundfont.
+`-gm` : Give General MIDI names to presets. Note that this will only change the names and will NOT magically turn the soundfont into a General MIDI compliant soundfont.
 
--mv : Main volume for sample instruments. Range: 1-15. Game Boy channels are unaffected.
+`-mv` : Main volume for sample instruments. Range: 1-15. Game Boy channels are unaffected.
 
-IMPORTANT NOTE: You need to leave the included file "psg_data.raw" and "goldensun_synth.raw" INTACT for Sound Font Ripper to work properly. If you remove or affect the files in any way, the "old" Game Boy PSG instruments and the Golden Sun's synth instrument (respecively) won't be dumped at all.
+IMPORTANT NOTE: You need to leave the included file `psg_data.raw` and `goldensun_synth.raw` INTACT for Sound Font Ripper to work properly. If you remove or affect the files in any way, the "old" Game Boy PSG instruments and the Golden Sun's synth instrument (respecively) won't be dumped at all.
 
-== HOWTO: Playback converted MIDIs ==
+---
+
+## HOWTO:
+
+### Playback converted MIDIs
 
 To play back MIDIs I recommend Winamp or Foobar2000. Unfortunately it seems song looping is error prone in Winamp (Nullsoft MIDI reader v3.5). I hope they'll fix it some day.
 To use SoundFont data to play the ripped MIDIs, I recommend BASSMIDI driver, which is free and allows playback of MIDI files using a sound font file.
 
 Both MIDI and SF2 are widely used standards so there are a wide range of programs supporting these.
 
-== HOWTO: Compile the GBA Mus Ripper suite ==
+### Compile the GBA Mus Ripper suite
 
 First, you should edit the Makefile (don't worry it's a very simple one) to suit your needs (compiler, flags, etc...). You need support for C++11, this means if you're using gcc you're going to need a version more recent than 4.8. It's probably compilable on 4.7.x but it's simpler to just update the compiler.
 
 Also if you insist on using something else than gcc, you should be very careful as somewhere in sf2_chunks.h, there is a struct class that must be packed in order to output correct data. If your compiler doesn't support the non-standard __attribute__ ((packed)) extension you'd have to figure out another way around the problem by yourself.
 One of the files is .c instead of .cpp but this file is compatible with both C99 and C++11 really, it just doesn't use any of the C++ extensions.
 
-== HOWTO: Rip songs semi-manually ==
+### Rip songs semi-manually
 
 When the automatic detection fails, it's possible (and actually fairly easy) to rip the data in a semi-automatic way. Semi-automatic because you have to locate the song table yourself within the ROM, but then the songs and their sound fonts are still dumped automatically by GBA Mus Ripper (you don't have to call Song Ripper and Sound Font Ripper manually, although you could of course do this).
 
@@ -137,21 +137,23 @@ A list of song table locations for GBA ROMs has been posted online already, so c
 
 To locate the song table within the ROM is pretty simple, but you need an HEX editor with search. Search for the sequence:
 
+```
 0x01, 0x3c, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0x00
+```
 
 Congratulations, you just found an "unused instrument". If there is several of them next to each other then there is not a single doubt the GBA ROM uses sappy (despite it's header not being detected).
 
-Once you found this parameter your hex editor so that it shows a multiple of 8 bytes per row (8, 16 or 24), and scroll down until you see "columns" of 0x00 and 0x08 appearing. It should look like this:
+Once you found this parameter your hex editor so that it shows a multiple of 8 bytes per row (8, 16 or 24), and scroll down until you see "columns" of `0x00` and `0x08` appearing. It should look like this:
 
+```
 0x** 0x** 0x** 0x08 0x0* 0x00 0x0* 0x00 0x** 0x** 0x** 0x08 0x0* 0x00 0x0* 0x00
 
 0x** 0x** 0x** 0x08 0x0* 0x00 0x0* 0x00 0x** 0x** 0x** 0x08 0x0* 0x00 0x0* 0x00
 
 0x** 0x** 0x** 0x08 0x0* 0x00 0x0* 0x00 0x** 0x** 0x** 0x08 0x0* 0x00 0x0* 0x00
+```
 
-Now just find the location of the very first word of 4 bytes that ends in 0x08 (it should be 32-bit aligned), and congratulations, you found the pointer to the first song of the game. For example, if the location was 0xabcde0, you should use:
-
-gba_mus_ripper game.gba 0xabcde0
+Now just find the location of the very first word of 4 bytes that ends in `0x08` (it should be 32-bit aligned), and congratulations, you found the pointer to the first song of the game. For example, if the location was `0xabcde0`, you should use: `gba_mus_ripper game.gba 0xabcde0`
 
 (Also, that "x" in the second position of the address is MANDATORY for it to work properly)
 
@@ -159,16 +161,20 @@ It's not that complicated, is it?
 
 Now, if this is still too complicated, there is yet another alternative. Search for a tool called "mp2ktool", which can locate this automatically (and more accurately than my own Sappy Detector). So just use:
 
-mp2ktool songtable game.gba
+`mp2ktool songtable game.gba`
 
 and it will print the offset on the screen, then use this offset as an argument to gba_mus_ripper and it'll rip it.
 I only heard about this tool very recently but it sounds interesting. I'd have to give it a deeper investigation.
 
-== Note about the old Java version 1.1 ==
+---
+
+### Note about the old Java version 1.1
 
 The version 1.1 of the program, written in Java and requiring the JRE to run, is still provided as archive for fallback for people who can't run nor compile the new version. This version is not supported by any means. It's usage and functionality is roughly equivalent to v2.0 with less features.
 
-== FREQUENTLY ASKED QUESTIONS ==
+---
+
+## FREQUENTLY ASKED QUESTIONS
 
 Q: How do I know if game XXX uses sappy engine?
 
@@ -220,14 +226,10 @@ Q: The soundfonts causes major trouble / crashes the program when I'm trying to 
 
 A: Some games uses too many different soundbanks for different songs and this causes problems in extreme cases (more than 128 banks). You should use the -sb command to separate sound banks into different folders, which will result in many sound font files instead of a single sound font with many sound banks.
 
-=== Plans for future updates ===
-- Any suggestions are welcome
-- Could someone make a nice GUI for this program? It would be amazing ! And personally I have zero knowledge in GUI programming.
+---
 
-=== Contact ===
-Contact me at jmasur at bluewin dot ch if you want to give ideas about how I can improve GBA Mus Ripper, or even better, if you improved the program by yourself.
+### Changelog
 
-=== History ===
 v1.0 july 2012
 First public release
 
@@ -259,5 +261,5 @@ v3.3 march 2018
 Improve the detection of sappy engine by adding the 2nd definition for recompiled libraries (fixes MMBN6, Mother 3, etc)
 
 v3.4 September 2020
-The C/C++ code files for the previous version were found on jpmac26's Github account and recompiled to make updated .exe files. The instructions for working with "gba-mus-ripper.exe" have been made clearer, including instructions for adding Command Prompt into any folder on Windows.
+The C/C++ code files for the previous version were found on jpmac26's Github account and recompiled to make updated .exe files. The instructions for working with `gba-mus-ripper.exe` have been made clearer, including instructions for adding Command Prompt into any folder on Windows.
 Several small bugs have also been fixed.
