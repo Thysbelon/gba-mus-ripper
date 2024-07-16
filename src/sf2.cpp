@@ -187,7 +187,7 @@ void SF2::add_new_sample(FILE *file, SampleType type, const char *name, uint32_t
 	else
 	{
 		dir_end = dir_offset + size;
-		dir_loop_end = dir_offset + size;
+		dir_loop_end = dir_offset;
 		dir_loop_start = dir_offset;
 	}
 
