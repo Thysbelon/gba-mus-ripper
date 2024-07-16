@@ -576,12 +576,12 @@ int main(const int argc, char *const argv[])
 	instruments = new GBAInstr(sf2);
 
 	// Attempt to access psg_data file
-	psg_data = fopen((prg_prefix + "psg_data.raw").c_str(), "rb");
+	psg_data = fopen((prg_prefix + "../data/psg_data.raw").c_str(), "rb");
 	if (!psg_data)
 		puts("psg_data.raw file not found! PSG Instruments can't be dumped.");
 
 	// Attempt to access goldensun_synth file
-	goldensun_synth = fopen((prg_prefix + "goldensun_synth.raw").c_str(), "rb");
+	goldensun_synth = fopen((prg_prefix + "../data/goldensun_synth.raw").c_str(), "rb");
 	if (!goldensun_synth)
 		puts("goldensun_synth.raw file not found! Golden Sun's synth instruments can't be dumped.");
 

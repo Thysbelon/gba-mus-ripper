@@ -105,7 +105,7 @@ static void parse_args(const int argc, char *const args[])
 				raw = true;
             else if (!strcmp(args[i], "-o") && argc >= i + 1)
             {
-                outPath = args[i + 1];
+                outPath = args[++i];
             }
 			else
 			{
@@ -130,7 +130,7 @@ static void parse_args(const int argc, char *const args[])
 			name = inGBA_path.substr(separator_index, inGBA_path.find_last_of('.') - separator_index);
 
 			// Path where the input GBA file is located
-			outPath = inGBA_path.substr(0, separator_index);
+			outPath = inGBA_path.substr(0, separator_index) + '.';
 			path_found = true;
 		}
 		else if (!song_tbl_found)
@@ -298,7 +298,7 @@ int main(int argc, char *const argv[])
 		if (song_list[i] != song_tbl_end_ptr)
 		{
 			unsigned int bank_index = distance(sound_bank_list.begin(), sound_bank_index_list[i]);
-			std::string seq_rip_cmd = prg_prefix + "song_ripper.exe \"" + inGBA_path + "\" \"" + outPath;
+			std::string seq_rip_cmd = prg_prefix + "song_ripper \"" + inGBA_path + "\" \"" + outPath;
 
 			// Add leading zeroes to file name
 			if (sb) seq_rip_cmd += "/soundbank_" + dec4(bank_index);
@@ -332,7 +332,7 @@ int main(int argc, char *const argv[])
 
 			std::string sbnumber = dec4(bank_index);
 			std::string foldername = "soundbank_" + sbnumber;
-			std::string sf_rip_args = prg_prefix + "sound_font_ripper.exe \"" + inGBA_path + "\" \"" + outPath + '/';
+			std::string sf_rip_args = prg_prefix + "sound_font_ripper \"" + inGBA_path + "\" \"" + outPath + '/';
 			sf_rip_args += foldername + '/' + foldername /* + "_@" + hex(*j) */ + ".sf2\"";
 
 			if (sample_rate) sf_rip_args += " -s" + std::to_string(sample_rate);
@@ -349,7 +349,7 @@ int main(int argc, char *const argv[])
 		// Rips each sound bank in a single soundfont file
 		// Build argument list to call sound_font_riper
 		// Output sound font named after the input ROM
-		std::string sf_rip_args = prg_prefix + "sound_font_ripper.exe \"" + inGBA_path + "\" \"" + outPath + '/' + name + ".sf2\"";
+		std::string sf_rip_args = prg_prefix + "sound_font_ripper \"" + inGBA_path + "\" \"" + outPath + '/' + name + ".sf2\"";
 		if (sample_rate) sf_rip_args += " -s" + std::to_string(sample_rate);
 		if (main_volume) sf_rip_args += " -mv" + std::to_string(main_volume);
 		// Pass -gm argument if necessary
