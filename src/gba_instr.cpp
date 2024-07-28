@@ -212,6 +212,7 @@ int GBAInstr::build_every_keysplit_instrument(const inst_data inst)
 
 					// Add a bag for this key
 					sf2->add_new_inst_bag();
+					sf2->add_new_inst_generator(SFGenerator::keyRange, key, key);
 					generate_adsr_generators(adsr);
 					// Add generator to prevent scaling if required
 					if (no_scale)
@@ -223,8 +224,7 @@ int GBAInstr::build_every_keysplit_instrument(const inst_data inst)
 
 					// Override root key with the value we need
 					sf2->add_new_inst_generator(SFGenerator::overridingRootKey, rootkey - keynum + key);
-					// Key range is only a single key (obviously)
-					sf2->add_new_inst_generator(SFGenerator::keyRange, key, key);
+					
 				}	break;
 
 				case 4:
@@ -243,8 +243,8 @@ int GBAInstr::build_every_keysplit_instrument(const inst_data inst)
 					sample_index = samples.build_noise_sample(metal_flag, keynum);
 					sf2->add_new_inst_bag();
 					generate_psg_adsr_generators(adsr);
-					sf2->add_new_inst_generator(SFGenerator::overridingRootKey, key);
 					sf2->add_new_inst_generator(SFGenerator::keyRange, key, key);
+					sf2->add_new_inst_generator(SFGenerator::overridingRootKey, key);
 				}	break;
 
 				// Ignore other kind of instruments
@@ -345,13 +345,14 @@ int GBAInstr::build_keysplit_instrument(const inst_data inst)
 			// Create instrument bag
 			sf2->add_new_inst_bag();
 
+			// Particularity here : An additional bag to select the key range
+			sf2->add_new_inst_generator(SFGenerator::keyRange, split_list[i], split_list[i+1]-1);
+
 			// Add generator to prevent scaling if required
 			if (no_scale)
 				sf2->add_new_inst_generator(SFGenerator::scaleTuning, 0);
 
 			generate_adsr_generators(adsr);
-			// Particularity here : An additional bag to select the key range
-			sf2->add_new_inst_generator(SFGenerator::keyRange, split_list[i], split_list[i+1]-1);
 			sf2->add_new_inst_generator(SFGenerator::sampleModes, loop_flag ? 1 : 0);
 			sf2->add_new_inst_generator(SFGenerator::sampleID, sample_index);
 		}
