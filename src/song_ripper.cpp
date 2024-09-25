@@ -435,7 +435,10 @@ static void process_event(int track)
 			if (sv)
 				midi.add_RPN(track, 0, (char)arg1);
 			else
-				midi.add_controller(track, 20, arg1);
+				//midi.add_controller(track, 20, arg1); 
+				// midi pitch bend range adjust. https://github.com/mmontag/chip-player-js/blob/master/scripts/fix-n64-midi.js#L238 https://www.recordingblogs.com/wiki/midi-registered-parameter-number-rpn .
+				// midi2agb is programmed to interpret these RPN events as BENDR commands.
+				midi.add_RPN(track, 0, (char)arg1);
 			return;
 
 		// LFO Speed
