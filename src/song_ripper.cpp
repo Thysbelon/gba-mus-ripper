@@ -664,8 +664,20 @@ int main(int argc, char *argv[])
 	midi.add_marker("Converted by SequenceRipper 2.0");
 
 	fgetc(inGBA);						// Unknown byte
-	fgetc(inGBA);						// Priority
+	int8_t priority = fgetc(inGBA);						// Priority
 	int8_t reverb = fgetc(inGBA);		// Reverb
+	
+	// For midi2agb
+	if (reverb < 0){ // It's supposed to be less than 0, because it's a signed integer. Reverb is only active when the value is negative (when bit 7 is set).
+		char revMarker[8];
+		snprintf(revMarker, 8, "rev=%d", reverb & 0x7f /*turns reverb into a positive number*/);
+		midi.add_marker(revMarker);
+	}
+	if (priority > 0){
+		char priMarker[8];
+		snprintf(priMarker, 8, "pri=%d", priority);
+		midi.add_marker(priMarker);
+	}
 
 	int instr_bank_address = get_GBA_pointer();
 
