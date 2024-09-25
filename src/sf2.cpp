@@ -30,7 +30,7 @@
 #include "gba_samples.hpp"
 
 //Constructor to change the default sample rate
-SF2::SF2(unsigned int sample_rate = 22050) :
+SF2::SF2(unsigned int sample_rate/* = 22050*/) : // https://stackoverflow.com/questions/55896356/addition-of-default-argument-on-redeclaration-makes-this-constructor-a-default-c
 	size(0), /*instruments(this),*/
 	infolist_chunk(new InfoListChunk(this)),
 	sdtalist_chunk(new SdtaListChunk(this)),
