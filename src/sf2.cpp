@@ -22,7 +22,7 @@
  * - Creating presets
  * - Output to the target file
  */
-
+// TODO: add ability to insert modulators.
 #include <cstdio>
 #include <cstring>
 #include "sf2.hpp"

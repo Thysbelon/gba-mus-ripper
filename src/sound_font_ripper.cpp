@@ -6,6 +6,7 @@
  * Nintendo's "Sappy" engine (which ~90% of commercial GBA games are using),
  * and converts it to the widely used SF2 Sound Font format.
  */
+// TODO: Add modulators to each sf2 instrument to mimic MP2K LFO. This will require altering sf2.cpp to add the ability to set modulators. (gba_instr.cpp)
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
@@ -90,7 +91,7 @@ static void add_attenuation_preset()
 
 // Convert a GBA instrument in its SF2 counterpart
 // if any kind of error happens, it will do nothing and exit
-static void build_instrument(const inst_data inst)
+static void build_instrument(const inst_data inst) // TODO: add modulators at build_sampled_instrument in gba_instr.cpp.
 {
 	uint8_t instr_type = inst.word0 & 0xff;
 	std::string name;
@@ -227,7 +228,7 @@ static void duty_cycle(int duty)
 
 // This function read instrument data and outputs info on the screen or on the verbose file
 // it's not actually needed to convert the data to SF2 format, but is very useful for debugging
-static void verbose_instrument(const inst_data inst, bool recursive)
+static void verbose_instrument(const inst_data inst, bool recursive) // TODO: get rid of this duplicated code.
 {
 	// Do nothing with unused instruments
 	if (inst.word0 == 0x3c01 && inst.word1 == 0x02 && inst.word2 == 0x0F0000) return;

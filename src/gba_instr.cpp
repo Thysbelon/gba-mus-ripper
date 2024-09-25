@@ -6,6 +6,7 @@
  * This class deals with internal representation of
  * GBA instruments and converts them to SF2 instruments
  */
+// TODO: Add modulators to each sf2 instrument to mimic MP2K LFO. This will require altering sf2.cpp to add the ability to set modulators. build_sampled_instrument
 #include "gba_instr.hpp"
 #include <cmath>
 #include <cstdio>
@@ -147,6 +148,10 @@ int GBAInstr::build_sampled_instrument(const inst_data inst)
 	generate_adsr_generators(inst.word2);
 	sf2->add_new_inst_generator(SFGenerator::sampleModes, loop_flag ? 1 : 0);
 	sf2->add_new_inst_generator(SFGenerator::sampleID, sample_index);
+	
+	// override the default pitch modulator for CC1 to prevent unnecessary vibrato where the original song had panpot or volume modulation. https://www.mail-archive.com/fluid-dev@nongnu.org/msg05330.html
+	//sf2->add_new_inst_modulator();
+	// sf2.cpp by Bregalad does not have functional modulator support. TODO: add modulator support to sf2.cpp
 
 	// Add instrument to list
 	inst_map[inst] = cur_inst_index;

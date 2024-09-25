@@ -8,7 +8,11 @@
  * If the engine is found it rips all musics to MIDI (.mid) format and all
  * instruments to SoundFont 2.0 (.sf2) format.
  */
-
+/* 
+TODO: 
+- add the option to do a dry run (run the program with command line output, but without writing any files.)
+- bundle Kermalis's VG Music Studio's MP2K.yaml with gba_mus_ripper (likely in the data directory) and have gba_mus_ripper use it as a fallback when sappy_detector can't detect the song table. OR, maybe sappy_detector could use MP2K.yaml as a fallback.
+*/
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -184,7 +188,7 @@ int main(int argc, char *const argv[])
 #endif
 
 		// Exit if no sappy engine was found
-		if (!sound_engine_adr) exit(0);
+		if (!sound_engine_adr) exit(0); // TODO put specific error message here.
 
 		if (fseek(inGBA, sound_engine_adr, SEEK_SET))
 		{

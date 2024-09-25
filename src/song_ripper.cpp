@@ -4,7 +4,12 @@
  *
  * This program converts a GBA song for the Sappy sound engine into MIDI (.mid) format.
  */
+/* 
+TODO: overhaul this to use cppmidi instead of midi.cpp (low priority); this will make it possible to replace undefined midi CCs with text events (for MP2K LFOs). Text events cannot be assigned to specific channels; they can be assigned to specific tracks, but only format 1 midis have tracks.
+The above is low priorty because I prefer to leave LFO events as undefined midi CCs because modulators in the sf2 can use the CCs as input to recreate LFO (though it will never be one-to-one with the GBA, because the GBA LFO effects speed up and slow down with the tempo).
 
+Study the output of the sv option and improve on it if neccessary.
+*/
 #include "midi.hpp"
 #include <algorithm>
 #include <forward_list>
@@ -250,8 +255,8 @@ static void process_event(int track)
 	{
 		updateStartupLFO();
 	}
-
-
+	
+	
 	// Length table for notes and rests
 	const int lenTbl[] =
 	{
@@ -457,7 +462,7 @@ static void process_event(int track)
 				midi.add_controller(track, 26, arg1);
 			return;
 
-		// LFO depth
+		// LFO depth / MOD / Modulation depth
 		case 0xc4:
 			if (sv)
 			{
@@ -482,12 +487,28 @@ static void process_event(int track)
 				midi.add_controller(track, 1, arg1);
 			return;
 
-		// LFO type
+		// LFO type / MODT / Modulation Type
 		case 0xc5:
 			if (sv)
 				lfo_type[track] = arg1;
 			else
 				midi.add_controller(track, 22, arg1);
+				
+				// These CCs don't serve any purpose yet, but in the next version all ripped SF2s will have modulators that imitate GBA pitch and vol LFO. Due to the limitations of SF2 modulators, I couldn't use just cc22 to change modulation type.
+				/*
+				if (arg1==0){
+					midi.add_controller(track, 110, 0); // ENABLE PITCH
+					midi.add_controller(track, 111, 0); // DISABLE VOL
+				} else if (arg1==1) {
+					midi.add_controller(track, 110, 127); // DISABLE PITCH
+					midi.add_controller(track, 111, 127); // ENABLE VOL
+				} else if (arg1==2){
+					midi.add_controller(track, 110, 127); // DISABLE PITCH
+					midi.add_controller(track, 111, 0); // DISABLE VOL
+				}
+				*/
+				// The reason the ON and OFF values for cc110 Set-LFO-to-Pitch and cc111 Set-LFO-to-Volume are different is because pitch is the default LFO type in MP2K songs; if no LFO type has been defined yet, the player should default to pitch; when a midi CC hasn't been defined, it is zero; thus, to make pitch LFO the default on midi and sf2, 0 must mean ON for pitch LFO and OFF for vol LFO.
+				// With the next version of GBA_Mus_Ripper, I will release a fork of midi2agb has been altered to read these events as LFO type.
 			return;
 
 		// Detune
@@ -613,7 +634,7 @@ int main(int argc, char *argv[])
 {
 	FILE *outMID;
 	puts("GBA ROM sequence ripper (c) 2012 Bregalad");
-	uint32_t base_address = parseArguments(argc - 1, argv + 1);
+	uint32_t base_address = parseArguments(argc - 1, argv + 1); // song header
 
 	if (fseek(inGBA, base_address, SEEK_SET))
 	{
@@ -640,7 +661,7 @@ int main(int argc, char *argv[])
 
 	printf("Converting...");
 
-	if (rc)
+	if (rc) 
 	{	// Make the drum channel last in the list, hopefully reducing the risk of it being used
 		midi.chn_reorder[9] = 15; // moves channel 10 to channel 16
 		midi.chn_reorder[15] = 9;
