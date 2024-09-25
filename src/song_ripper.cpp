@@ -495,7 +495,11 @@ static void process_event(int track)
 			if (sv)
 				midi.add_RPN(track, 1, (char)arg1);
 			else
-				midi.add_controller(track, 24, arg1);
+				midi.add_controller(track, 24, arg1); // TODO: change this to a midi2agb-defined text event.
+				// insert both a midi fine tuning RPN *and* a midi cc 24. This is neccessary because the range of values for MP2K TUNE (0x00 - 0x40 - 0x7F) does not line up 1-to-1 with the range of values for the fine tuning RPN (0x0000 - 0x2000 - 0x3FFF). For example, the expression (0x40 / 0x7F)*0x3FFF equals 0x2040, but 0x40 is normal pitch for mp2k and 0x2000 is normal pitch for RPN.
+				// This shouldn't adversely affect midi2agb, because that program ignores all RPN events other than pitch bend range changes.
+				// Needs TESTING
+				midi.add_RPN(track, 1, arg1>0x40 ? (int16_t)round(((float)arg1 / 0x7F) * 0x3FFF) : (int16_t)round(((float)arg1 / 0x40) * 0x2000) );
 			return;
 
 		// Key off
