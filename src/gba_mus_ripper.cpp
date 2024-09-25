@@ -174,8 +174,8 @@ int main(int argc, char *const argv[])
 		// Auto-detect address of sappy engine
 #ifdef WIN32
 		// On windows, just use the 32-bit return code of the sappy_detector executable
-		std::string sappy_detector_cmd = prg_prefix + "sappy_detector \"" + inGBA_path + "\"";
-        printf("DEBUG: Going to call system(%s)\n", sappy_detector_cmd.c_str());
+		std::string sappy_detector_cmd = "\"\"" + prg_prefix + "sappy_detector\" \"" + inGBA_path + "\"\""; // https://stackoverflow.com/questions/27975969/how-to-run-an-executable-with-spaces-using-stdsystem-on-windows
+		printf("DEBUG: Going to call system(%s)\n", sappy_detector_cmd.c_str());
 		int sound_engine_adr = std::system(sappy_detector_cmd.c_str());
 #else
 		// On linux the function is duplicated in this executable
@@ -298,7 +298,12 @@ int main(int argc, char *const argv[])
 		if (song_list[i] != song_tbl_end_ptr)
 		{
 			unsigned int bank_index = distance(sound_bank_list.begin(), sound_bank_index_list[i]);
+			#ifdef WIN32
+			// I don't know if the extra quotes cause problems on Linux.
+			std::string seq_rip_cmd = "\"\"" + prg_prefix + "song_ripper\" \"" + inGBA_path + "\" \"" + outPath;
+			#else
 			std::string seq_rip_cmd = prg_prefix + "song_ripper \"" + inGBA_path + "\" \"" + outPath;
+			#endif
 
 			// Add leading zeroes to file name
 			if (sb) seq_rip_cmd += "/soundbank_" + dec4(bank_index);
@@ -315,6 +320,10 @@ int main(int argc, char *const argv[])
 			if (!sb)
 				seq_rip_cmd += " -b" + std::to_string(bank_index);
 
+			#ifdef WIN32
+			seq_rip_cmd += "\"";
+			#endif
+			
 			printf("Song %u\n", i);
 
 			printf("DEBUG: Going to call system(%s)\n", seq_rip_cmd.c_str());
@@ -332,13 +341,21 @@ int main(int argc, char *const argv[])
 
 			std::string sbnumber = dec4(bank_index);
 			std::string foldername = "soundbank_" + sbnumber;
+			#ifdef WIN32
+			std::string sf_rip_args = "\"\"" + prg_prefix + "sound_font_ripper\" \"" + inGBA_path + "\" \"" + outPath + '/';
+			#else
 			std::string sf_rip_args = prg_prefix + "sound_font_ripper \"" + inGBA_path + "\" \"" + outPath + '/';
+			#endif
 			sf_rip_args += foldername + '/' + foldername /* + "_@" + hex(*j) */ + ".sf2\"";
 
 			if (sample_rate) sf_rip_args += " -s" + std::to_string(sample_rate);
 			if (main_volume)	sf_rip_args += " -mv" + std::to_string(main_volume);
 			if (gm) sf_rip_args += " -gm";
 			sf_rip_args += " 0x" + hex(*j);
+			
+			#ifdef WIN32
+			sf_rip_args += "\"";
+			#endif
 
             printf("DEBUG: Goint to call system(%s)\n", sf_rip_args.c_str());
 			system(sf_rip_args.c_str());
@@ -349,7 +366,11 @@ int main(int argc, char *const argv[])
 		// Rips each sound bank in a single soundfont file
 		// Build argument list to call sound_font_riper
 		// Output sound font named after the input ROM
+		#ifdef WIN32
+		std::string sf_rip_args = "\"\"" + prg_prefix + "sound_font_ripper\" \"" + inGBA_path + "\" \"" + outPath + '/' + name + ".sf2\"";
+		#else
 		std::string sf_rip_args = prg_prefix + "sound_font_ripper \"" + inGBA_path + "\" \"" + outPath + '/' + name + ".sf2\"";
+		#endif
 		if (sample_rate) sf_rip_args += " -s" + std::to_string(sample_rate);
 		if (main_volume) sf_rip_args += " -mv" + std::to_string(main_volume);
 		// Pass -gm argument if necessary
@@ -358,7 +379,11 @@ int main(int argc, char *const argv[])
 		// Make sound banks addresses list.
 		for (bank_t j = sound_bank_list.begin(); j != sound_bank_list.end(); ++j)
 			sf_rip_args += " 0x" + hex(*j);
-
+		
+		#ifdef WIN32
+		sf_rip_args += "\"";
+		#endif
+		
 		// Call sound font ripper
         printf("DEBUG: Going to call system(%s)\n", sf_rip_args.c_str());
 		system(sf_rip_args.c_str());
