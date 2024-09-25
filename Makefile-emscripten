@@ -1,0 +1,44 @@
+# GNU/Linux
+CPPC=em++ -std=gnu++11
+CC=emcc -std=c99
+
+# Parameters used for compilation
+FLAGS=-Wall -fdata-sections -ffunction-sections -fmax-errors=5 -Os -Wno-c++11-narrowing
+# Additional parameters used for linking whole programs
+WHOLE=-s -fwhole-program -static -sEXPORTED_RUNTIME_METHODS=FS -sMODULARIZE -sEXPORT_NAME=
+
+all: $(shell mkdir build-emscripten) $(shell mkdir bin-emscripten) bin-emscripten/sappy_detector bin-emscripten/song_ripper bin-emscripten/sound_font_ripper #bin-emscripten/gba_mus_ripper 
+
+bin-emscripten/sappy_detector: src/sappy_detector.c
+	$(CC) $(FLAGS) $(WHOLE)sappy_detector src/sappy_detector.c -o bin-emscripten/sappy_detector.js
+
+bin-emscripten/song_ripper: src/song_ripper.cpp src/midi.hpp build-emscripten/midi.o
+	$(CPPC) $(FLAGS) $(WHOLE)song_ripper src/song_ripper.cpp build-emscripten/midi.o -o bin-emscripten/song_ripper.js
+
+bin-emscripten/sound_font_ripper: build-emscripten/sound_font_ripper.o build-emscripten/gba_samples.o build-emscripten/gba_instr.o build-emscripten/sf2.o
+	$(CPPC) $(FLAGS) $(WHOLE)sound_font_ripper build-emscripten/gba_samples.o build-emscripten/gba_instr.o build-emscripten/sf2.o build-emscripten/sound_font_ripper.o -o bin-emscripten/sound_font_ripper.js
+
+#bin-emscripten/gba_mus_ripper: src/gba_mus_ripper.cpp src/hex_string.hpp
+#	$(CPPC) $(FLAGS) $(WHOLE) src/gba_mus_ripper.cpp -o bin-emscripten/gba_mus_ripper
+# gba_mus_ripper will be rewritten in client-side JavaScript, which will call the other programs as wasm modules.
+# sappy_detector and song_ripper may need to be run using "noInitialRun: true" and module.run() to get the return value of main
+
+build-emscripten/midi.o: src/midi.cpp src/midi.hpp
+	$(CPPC) $(FLAGS) -c src/midi.cpp -o build-emscripten/midi.o
+
+build-emscripten/gba_samples.o : src/gba_samples.cpp src/gba_samples.hpp src/hex_string.hpp src/sf2.hpp src/sf2_types.hpp
+	$(CPPC) $(FLAGS) -c src/gba_samples.cpp -o build-emscripten/gba_samples.o
+
+build-emscripten/gba_instr.o : src/gba_instr.cpp src/gba_instr.hpp src/sf2.hpp src/sf2_types.hpp src/hex_string.hpp src/gba_samples.hpp
+	$(CPPC) $(FLAGS) -c src/gba_instr.cpp -o build-emscripten/gba_instr.o
+
+build-emscripten/sf2.o : src/sf2.cpp src/sf2.hpp src/sf2_types.hpp src/sf2_chunks.hpp
+	$(CPPC) $(FLAGS) -c src/sf2.cpp -o build-emscripten/sf2.o
+
+build-emscripten/sound_font_ripper.o: src/sound_font_ripper.cpp src/sf2.hpp src/gba_instr.hpp src/hex_string.hpp
+	$(CPPC) $(FLAGS) -c src/sound_font_ripper.cpp -o build-emscripten/sound_font_ripper.o
+
+clean:
+	rm -f *.o *.s *.i *.ii
+	rm -rf build-emscripten/
+	rm -rf bin-emscripten/

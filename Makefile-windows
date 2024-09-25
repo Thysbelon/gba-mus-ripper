@@ -1,0 +1,48 @@
+# Windows. https://github.com/mstorsjo/llvm-mingw/releases/latest llvm-mingw-<version>-msvcrt-x86_64.zip . Add llvm-mingw-<version>-msvcrt-x86_64\bin to "Path" environment variable.
+CPPC=x86_64-w64-mingw32-g++.exe -std=gnu++11
+CC=x86_64-w64-mingw32-gcc.exe -std=c99
+
+# GNU/Linux
+#CPPC=/usr/bin/g++ -std=gnu++11
+#CC=/usr/bin/gcc -std=c99
+
+# Parameters used for compilation
+FLAGS=-Wall -fdata-sections -ffunction-sections -fmax-errors=5 -Os
+# Additional parameters used for linking whole programs
+WHOLE=-s -fwhole-program -static
+
+all: $(shell mkdir build-w) $(shell mkdir bin-w) bin-w/sappy_detector bin-w/song_ripper bin-w/sound_font_ripper bin-w/gba_mus_ripper
+
+bin-w/sappy_detector: src/sappy_detector.c
+	$(CC) $(FLAGS) $(WHOLE) src/sappy_detector.c -o bin-w/sappy_detector
+
+bin-w/song_ripper: src/song_ripper.cpp src/midi.hpp build-w/midi.o
+	$(CPPC) $(FLAGS) $(WHOLE) src/song_ripper.cpp build-w/midi.o -o bin-w/song_ripper
+
+bin-w/sound_font_ripper: build-w/sound_font_ripper.o build-w/gba_samples.o build-w/gba_instr.o build-w/sf2.o
+	$(CPPC) $(FLAGS) $(WHOLE) build-w/gba_samples.o build-w/gba_instr.o build-w/sf2.o build-w/sound_font_ripper.o -o bin-w/sound_font_ripper
+
+bin-w/gba_mus_ripper: src/gba_mus_ripper.cpp src/hex_string.hpp
+	$(CPPC) $(FLAGS) $(WHOLE) src/gba_mus_ripper.cpp -o bin-w/gba_mus_ripper
+
+build-w/midi.o: src/midi.cpp src/midi.hpp
+	$(CPPC) $(FLAGS) -c src/midi.cpp -o build-w/midi.o
+
+build-w/gba_samples.o : src/gba_samples.cpp src/gba_samples.hpp src/hex_string.hpp src/sf2.hpp src/sf2_types.hpp
+	$(CPPC) $(FLAGS) -c src/gba_samples.cpp -o build-w/gba_samples.o
+
+build-w/gba_instr.o : src/gba_instr.cpp src/gba_instr.hpp src/sf2.hpp src/sf2_types.hpp src/hex_string.hpp src/gba_samples.hpp
+	$(CPPC) $(FLAGS) -c src/gba_instr.cpp -o build-w/gba_instr.o
+
+build-w/sf2.o : src/sf2.cpp src/sf2.hpp src/sf2_types.hpp src/sf2_chunks.hpp
+	$(CPPC) $(FLAGS) -c src/sf2.cpp -o build-w/sf2.o
+
+build-w/sound_font_ripper.o: src/sound_font_ripper.cpp src/sf2.hpp src/gba_instr.hpp src/hex_string.hpp
+	$(CPPC) $(FLAGS) -c src/sound_font_ripper.cpp -o build-w/sound_font_ripper.o
+
+clean:
+	cmd.exe /c "del /f /q *.o *.s *.i *.ii"
+	cmd.exe /c "del /f /s /q build-w"
+	cmd.exe /c "rmdir /q build-w"
+	cmd.exe /c "del /f /s /q bin-w"
+	cmd.exe /c "rmdir /q bin-w"

@@ -2,6 +2,11 @@
 
 out/
 bin/
+build/
+bin-w/
+build-w/
+bin-emscripten/
+build-emscripten/
 
 # C++ objects and libs
 
