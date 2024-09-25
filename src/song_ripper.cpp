@@ -635,9 +635,8 @@ int main(int argc, char *argv[])
 
 	if (rc)
 	{	// Make the drum channel last in the list, hopefully reducing the risk of it being used
-		midi.chn_reorder[9] = 15;
-		for (unsigned int j = 10; j < 16; ++j)
-			midi.chn_reorder[j] = j-1;
+		midi.chn_reorder[9] = 15; // moves channel 10 to channel 16
+		midi.chn_reorder[15] = 9;
 	}
 
 	if (gs)
