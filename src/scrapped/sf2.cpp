@@ -145,6 +145,12 @@ void SF2::add_new_inst_modulator()
 	pdtalist_chunk->imod_subchunk.add_modulator(sfModList(this));
 }
 
+//Add a new customized modulator to the list
+void SF2::add_new_inst_modulator(SFModulator modSource, SFModulator modSource2, SFGenerator modDest, uint16_t amount, SFTransform transCurve)
+{
+	pdtalist_chunk->imod_subchunk.add_modulator(sfModList(this, modSource, modSource2, modDest, amount, transCurve));
+}
+
 //Add a new blank generator to the list
 void SF2::add_new_inst_generator()
 {

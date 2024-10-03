@@ -144,7 +144,7 @@ class sfModList
 	SFModulator sfModSrcOper;		// Modulator source
 	SFGenerator sfModDestOper;		// Modulator destination
 	uint16_t modAmount;				// Modulator value
-	SFModulator sfModAmtSrcOper;	// Modulator source ??
+	SFModulator sfModAmtSrcOper;	// Modulator source ?? Probably the second source
 	SFTransform sfModTransOper;		// Transformation curvative
 	SF2 *sf2;
 public:
@@ -154,6 +154,15 @@ public:
 		modAmount(0),
 		sfModAmtSrcOper(SFModulator::_null),
 		sfModTransOper(SFTransform::_null),
+		sf2(sf2)
+	{}
+	// Straightforward constructor
+	sfModList(SF2 *sf2, SFModulator modSource, SFModulator modSource2, SFGenerator modDest, uint16_t amount, SFTransform transCurve) :
+		sfModSrcOper(modSource),
+		sfModDestOper(modDest),
+		modAmount(amount),
+		sfModAmtSrcOper(modSource2),
+		sfModTransOper(transCurve),
 		sf2(sf2)
 	{}
 
@@ -731,6 +740,7 @@ class HydraChunk : public SF2Chunks
 	friend void SF2::add_new_preset_generator(SFGenerator operation, uint16_t value);
 	friend void SF2::add_new_preset_generator(SFGenerator operation, uint8_t lo, uint8_t hi);
 	friend void SF2::add_new_inst_modulator();
+	friend void SF2::add_new_inst_modulator(SFModulator modSource, SFModulator modSource2, SFGenerator modDest, uint16_t amount, SFTransform transCurve);
 	friend void SF2::add_new_inst_generator();
 	friend void SF2::add_new_inst_generator(SFGenerator operation, uint16_t value);
 	friend void SF2::add_new_inst_generator(SFGenerator operation, uint8_t lo, uint8_t hi);

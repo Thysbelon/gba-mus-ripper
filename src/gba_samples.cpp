@@ -12,16 +12,155 @@
 #include <cstdint>
 #include <cstdio>
 #include "hex_string.hpp"
+#include <vector> // I think I need to include this because I'm declaring vector variables in this file.
+#include "sf2cute/include/sf2cute.hpp"
+#include <utility> // for pair
+//#include <tuple>
 
 extern FILE *inGBA;
 extern FILE *psg_data;
 extern FILE *goldensun_synth;
 
-int GBASamples::build_sample(uint32_t pointer)
+std::shared_ptr<SFSample> GBASamples::gbaToNewSample(/*GBA specific params*/ FILE *sampleFile /*usually inGBA, sometimes psg_data or goldensun_synth*/, SampleType inputFmt, uint32_t pointer, uint32_t size, /*sf2 params*/ std::string name, uint32_t loop_pos/*start_loop*/, uint32_t original_pitch/*root key?*/, uint32_t pitch_correction/*microtuning?*/, uint32_t sample_rate){
+	// sample data is obtained from the gba file using "pointer" and "size"
+	// GBA sample data can be a few different formats. sf2 sample data must be SIGNED_16. sf2.cpp converted all formats to SIGNED_16 automatically.
+	
+	// from sf2_chunks.hpp
+	// Seek at the start of the sample in input file
+	fseek(sampleFile, pointer, SEEK_SET);
+	
+	int16_t *outbuf = new int16_t[size];
+	
+	switch (inputFmt)
+	{
+		// Source is unsigned 8 bits
+		case UNSIGNED_8:
+		{
+			uint8_t *data = new uint8_t[size];
+			fread(data, 1, size, sampleFile);
+			// Convert to signed 16 bits
+			for (unsigned int j=0; j < size; j++)
+				outbuf[j] = (data[j] - 0x80) << 8;
+			delete[] data;
+		}	break;
+
+		// Source is signed 8 bits
+		case SIGNED_8:
+		{
+			int8_t *data = new int8_t[size];
+			fread(data, 1, size, sampleFile);
+
+			for (unsigned int j=0; j < size; j++)
+				outbuf[j] = data[j] << 8;
+			delete[] data;
+		}	break;
+
+		case SIGNED_16:
+			// Just read raw data, no conversion needed
+			fread(outbuf, 2, size, sampleFile);
+			break;
+
+		case GAMEBOY_CH3:
+		{
+			// Conversion lookup table
+			const int16_t conv_tbl[] =
+			{
+				-0x4000, -0x3800, -0x3000, -0x2800, -0x2000, -0x1800, -0x0100, -0x0800,
+				0x0000, 0x0800, 0x1000, 0x1800, 0x2000, 0x2800, 0x3000, 0x3800
+			};
+
+			int num_of_repts = size/32;
+			// Data is always on 16 bytes
+			uint8_t data[16];
+			fread(data, 1, 16, sampleFile);
+
+			for (int j=0, l=0; j<16; j++)
+			{
+				for (int k=num_of_repts; k!=0; k--, l++)
+					outbuf[l] = conv_tbl[data[j]>>4];
+
+				for (int k=num_of_repts; k!=0; k--, l++)
+					outbuf[l] = conv_tbl[data[j]&0xf];
+			}
+		}	break;
+
+		case BDPCM:
+		{
+			static const int8_t delta_lut[] = {0, 1, 4, 9, 16, 25, 36, 49, -64, -49, -36, -25, -16, -9, -4, -1};
+
+			/*
+			 * A block consists of an initial signed 8 bit PCM byte
+			 * followed by 63 nibbles stored in 32 bytes.
+			 * The first of these bytes has a zero padded (unused) high nibble.
+			 * This makes up of a total block size of 65 (0x21) bytes each.
+			 *
+			 * Decoding works like this:
+			 * The initial byte can be directly read without decoding. Then each
+			 * next sample can be decoded by putting the nibble into the delta-lookup-table
+			 * and adding that value to the previously calculated sample
+			 * until the end of the block is reached.
+			 */
+
+			unsigned int nblocks = size / 64;		// 64 samples per block
+
+			char (*data)[33] = new char[nblocks][33];
+			fread(data, 33, nblocks, sampleFile);
+
+			for (unsigned int block=0; block < nblocks; ++block)
+			{
+				int8_t sample = data[block][0];
+				outbuf[64*block] = sample << 8;
+				sample += delta_lut[data[block][1] & 0xf];
+				outbuf[64*block+1] = sample << 8;
+				for (unsigned int j = 1; j < 32; ++j)
+				{
+					uint8_t d = data[block][j+1];
+					sample += delta_lut[d >> 4];
+					outbuf[64*block+2*j] = sample << 8;
+					sample += delta_lut[d & 0xf];
+					outbuf[64*block+2*j+1]= sample << 8;
+				}
+			}
+			memset(outbuf+64*nblocks, 0, size-64*nblocks);		// Remaining samples are always 0
+
+			delete[] data;
+		}   break;
+	}
+	
+	// https://stackoverflow.com/questions/8777603/what-is-the-simplest-way-to-convert-array-to-vector
+	std::vector<int16_t> sample_data(outbuf, outbuf + size);
+	std::shared_ptr<SFSample> shared_sample = sf2->NewSample(
+		name,
+		sample_data,
+		loop_pos,
+		uint32_t(sample_data.size()),
+		sample_rate,
+		uint8_t(original_pitch), // I think this is a key number
+		int8_t(pitch_correction) // I think this is cents
+	);
+	
+	return shared_sample;
+	
+	/*
+	int16_t temp_array[size];
+	fread();
+	// https://stackoverflow.com/questions/8777603/what-is-the-simplest-way-to-convert-array-to-vector
+	std::vector<int16_t> sample_data;
+	sf2->NewSample(name)
+	*/
+}
+
+// Add new sample using default sample rate
+std::shared_ptr<SFSample> GBASamples::gbaToNewSample(/*GBA specific params*/ FILE *sampleFile /*usually inGBA, sometimes psg_data or goldensun_synth*/, SampleType inputFmt, uint32_t pointer, uint32_t size, /*sf2 params*/ std::string name, uint32_t loop_pos/*start_loop*/, uint32_t original_pitch/*root key?*/, uint32_t pitch_correction/*microtuning?*/){
+	return gbaToNewSample(sampleFile, inputFmt, pointer, size, name, loop_pos, original_pitch, pitch_correction, default_sample_rate);
+}
+
+std::pair< uint32_t, std::vector< std::shared_ptr<SFSample> > > GBASamples::build_sample(uint32_t pointer)
 {	// Do nothing if sample already exists
 	for (int i=samples_list.size()-1; i >= 0; --i)
-		if (samples_list[i] == pointer) return i;
+		if (samples_list[i].first == pointer) return std::make_pair(i, samples_list[i].second);
 
+	std::shared_ptr<SFSample> sampleSF2Pointer;
 	// Read sample data
 	if (fseek(inGBA, pointer, SEEK_SET)) throw -1;
 
@@ -40,7 +179,7 @@ int GBASamples::build_sample(uint32_t pointer)
 
 	//Detect invalid samples
 	bool loop_en;
-    bool bdpcm_en = false;
+	bool bdpcm_en = false;
 
 	if (hdr.loop == 0x40000000)
 		loop_en = true;
@@ -49,14 +188,14 @@ int GBASamples::build_sample(uint32_t pointer)
 	else if (hdr.loop == 0x1)
 	{
 		bdpcm_en = true;    // Detect compressed samples
-	    loop_en = false;
+		loop_en = false;
 	}
 	else
 		throw -1;			// Invalid loop -> return error
 
 	// Compute SF2 base note and fine tune from GBA pitch
 	// GBA pitch is 1024 * Mid_C frequency
-	double delta_note = 12 * log2(sf2->default_sample_rate * 1024.0 / hdr.pitch);
+	double delta_note = 12 * log2(default_sample_rate * 1024.0 / hdr.pitch);
 	double int_delta_note = round(delta_note);
 	unsigned int pitch_correction = int((int_delta_note - delta_note) * 100);
 	unsigned int original_pitch = 60 + (int)int_delta_note;
@@ -76,24 +215,28 @@ int GBASamples::build_sample(uint32_t pointer)
 				if (change_speed == 0)
 				{	// Square wave with constant duty cycle
 					unsigned int base_pointer = 128 + 64 * (duty_cycle >> 2);
-					sf2->add_new_sample(goldensun_synth, UNSIGNED_8, name.c_str(), base_pointer, 64, true, 0, original_pitch, pitch_correction);
+					//sf2->add_new_sample(goldensun_synth, UNSIGNED_8, name.c_str(), base_pointer, 64, true, 0, original_pitch, pitch_correction); // !
+					sampleSF2Pointer = gbaToNewSample(goldensun_synth, UNSIGNED_8, base_pointer, 64, name, 0, original_pitch, pitch_correction);
 				}
 				else
 				{	// Sqaure wave with variable duty cycle, not exact, but sounds close enough
-					sf2->add_new_sample(goldensun_synth, UNSIGNED_8, name.c_str(), 128, 8192, true, 0, original_pitch, pitch_correction);
+					//sf2->add_new_sample(goldensun_synth, UNSIGNED_8, name.c_str(), 128, 8192, true, 0, original_pitch, pitch_correction);
+					sampleSF2Pointer=gbaToNewSample(goldensun_synth, UNSIGNED_8, 128, 8192, name, 0, original_pitch, pitch_correction);
 				}
 			}	break;
 
 			case 1:		// Saw wave
 			{
 				std::string name = "Saw @0x" + hex(pointer);
-				sf2->add_new_sample(goldensun_synth, UNSIGNED_8, name.c_str(), 0, 64, true, 0, original_pitch, pitch_correction);
+				//sf2->add_new_sample(goldensun_synth, UNSIGNED_8, name.c_str(), 0, 64, true, 0, original_pitch, pitch_correction);
+				sampleSF2Pointer=gbaToNewSample(goldensun_synth, UNSIGNED_8, 0, 64, name, 0, original_pitch, pitch_correction);
 			}	break;
 
 			case 2:		// Triangle wave
 			{
 				std::string name = "Triangle @0x" + hex(pointer);
-				sf2->add_new_sample(goldensun_synth, UNSIGNED_8, name.c_str(), 64, 64, true, 0, original_pitch, pitch_correction);
+				//sf2->add_new_sample(goldensun_synth, UNSIGNED_8, name.c_str(), 64, 64, true, 0, original_pitch, pitch_correction);
+				sampleSF2Pointer=gbaToNewSample(goldensun_synth, UNSIGNED_8, 64, 64, name, 0, original_pitch, pitch_correction);
 			}	break;
 
 			default :
@@ -116,38 +259,46 @@ int GBASamples::build_sample(uint32_t pointer)
 		std::string name = (bdpcm_en ? "BDPCM @0x" : "Sample @0x") + hex(pointer);
 
 		// Add the sample to output
-		sf2->add_new_sample(inGBA, bdpcm_en ? BDPCM : SIGNED_8, name.c_str(), pointer + 16, hdr.len, loop_en, hdr.loop_pos, original_pitch, pitch_correction);
+		//sf2->add_new_sample(inGBA, bdpcm_en ? BDPCM : SIGNED_8, name.c_str(), pointer + 16, hdr.len, loop_en, hdr.loop_pos, original_pitch, pitch_correction);
+		sampleSF2Pointer = gbaToNewSample(inGBA, bdpcm_en ? BDPCM : SIGNED_8, pointer + 16, hdr.len, name, hdr.loop_pos, original_pitch, pitch_correction);
 	}
-	samples_list.push_back(pointer);
-	return samples_list.size() - 1;
+	std::vector<std::shared_ptr<SFSample>> retSampVec({sampleSF2Pointer});
+	samples_list.push_back(std::make_pair(pointer, retSampVec));
+	return std::make_pair(samples_list.size() - 1, retSampVec);
 }
 
 //Build game boy channel 3 sample
-int GBASamples::build_GB3_samples(uint32_t pointer)
+std::pair< uint32_t, std::vector< std::shared_ptr<SFSample> > > GBASamples::build_GB3_samples(uint32_t pointer)
 {
 	// Do nothing if sample already exists
 	for (int i=samples_list.size()-1; i >= 0; --i)
-		if (samples_list[i] == pointer) return i;
+		if (samples_list[i].first == pointer) return std::make_pair(i, samples_list[i].second);
 
 	std::string name = "GB3 @0x" + hex(pointer);
 
-	sf2->add_new_sample(inGBA, GAMEBOY_CH3, (name + 'A').c_str(), pointer, 256, true, 0, 53, 24, 22050);
-	sf2->add_new_sample(inGBA, GAMEBOY_CH3, (name + 'B').c_str(), pointer, 128, true, 0, 65, 24, 22050);
-	sf2->add_new_sample(inGBA, GAMEBOY_CH3, (name + 'C').c_str(), pointer, 64, true, 0, 77, 24, 22050);
-	sf2->add_new_sample(inGBA, GAMEBOY_CH3, (name + 'D').c_str(), pointer, 32, true, 0, 89, 24, 22050);
+	//sf2->add_new_sample(inGBA, GAMEBOY_CH3, (name + 'A').c_str(), pointer, 256, true, 0, 53, 24, 22050);
+	std::shared_ptr<SFSample> sampleSF2Pointer1 = gbaToNewSample(inGBA, GAMEBOY_CH3, pointer, 256, name+'A', 0, 53, 24, 22050);
+	//sf2->add_new_sample(inGBA, GAMEBOY_CH3, (name + 'B').c_str(), pointer, 128, true, 0, 65, 24, 22050);
+	std::shared_ptr<SFSample> sampleSF2Pointer2 = gbaToNewSample(inGBA, GAMEBOY_CH3, pointer, 128, name+'B', 0, 65, 24, 22050);
+	//sf2->add_new_sample(inGBA, GAMEBOY_CH3, (name + 'C').c_str(), pointer, 64, true, 0, 77, 24, 22050);
+	std::shared_ptr<SFSample> sampleSF2Pointer3 = gbaToNewSample(inGBA, GAMEBOY_CH3, pointer, 64, name+'C', 0, 77, 24, 22050);
+	//sf2->add_new_sample(inGBA, GAMEBOY_CH3, (name + 'D').c_str(), pointer, 32, true, 0, 89, 24, 22050);
+	std::shared_ptr<SFSample> sampleSF2Pointer4 = gbaToNewSample(inGBA, GAMEBOY_CH3, pointer, 32, name+'D', 0, 89, 24, 22050);
 
 	// We have to to add multiple entries to have the size of the list in sync
 	// with the numeric indexes of samples....
-	for (int i=4; i!=0; --i) samples_list.push_back(pointer);
-	return samples_list.size() - 1;
+	std::vector<std::shared_ptr<SFSample>> retSampVec({sampleSF2Pointer1, sampleSF2Pointer2, sampleSF2Pointer3, sampleSF2Pointer4});
+	for (int i=4; i!=0; --i) samples_list.push_back(std::make_pair(pointer, retSampVec));
+	return std::make_pair(samples_list.size() - 1, retSampVec);
 }
 
 //Build square wave sample
-int GBASamples::build_pulse_samples(unsigned int duty_cycle)
+std::pair< uint32_t, std::vector< std::shared_ptr<SFSample> > > GBASamples::build_pulse_samples(unsigned int duty_cycle)
 {	// Do nothing if sample already exists
 	for (int i=samples_list.size()-1; i >= 0; --i)
-		if (samples_list[i] == duty_cycle) return i;
+		if (samples_list[i].first == duty_cycle) return std::make_pair(i, samples_list[i].second);
 
+	std::shared_ptr<SFSample> sampleSF2Pointer;
 	std::string name = "square ";
 	switch (duty_cycle)
 	{
@@ -182,17 +333,21 @@ int GBASamples::build_pulse_samples(unsigned int duty_cycle)
 
 	const int loop_size[5] = {689, 344, 172, 86, 43};
 
+	std::vector<std::shared_ptr<SFSample>> retSampVec;
 	for (int i = 0; i < 5; i++)
 	{
-		sf2->add_new_sample(psg_data, SIGNED_16, (name + char('A' + i)).c_str(), pointer_tbl[duty_cycle][i], size_tbl[duty_cycle][i],
-						  true, size_tbl[duty_cycle][i]-loop_size[i], 36 + 12 * i, 38, 44100);
-		samples_list.push_back(duty_cycle);
+		//sf2->add_new_sample(psg_data, SIGNED_16, (name + char('A' + i)).c_str(), pointer_tbl[duty_cycle][i], size_tbl[duty_cycle][i], true, size_tbl[duty_cycle][i]-loop_size[i], 36 + 12 * i, 38, 44100);
+		retSampVec.push_back( gbaToNewSample(psg_data, SIGNED_16, pointer_tbl[duty_cycle][i], size_tbl[duty_cycle][i], name + char('A' + i), size_tbl[duty_cycle][i]-loop_size[i], 36 + 12 * i, 38, 44100) );
 	}
-	return samples_list.size()-1;
+	for (int i = 0; i < 5; i++)
+	{
+		samples_list.push_back(std::make_pair(duty_cycle, retSampVec));
+	}
+	return std::make_pair(samples_list.size()-1, retSampVec);
 }
 
 //Build white noise sample
-int GBASamples::build_noise_sample(bool metallic, int key)
+std::pair< uint32_t, std::vector< std::shared_ptr<SFSample> > > GBASamples::build_noise_sample(bool metallic, int key)
 {
 	//prevent out of range keys
 	if (key < 42) key = 42;
@@ -201,8 +356,10 @@ int GBASamples::build_noise_sample(bool metallic, int key)
 	unsigned int num = metallic ? 3 + (key-42) : 80 + (key-42);
 
 	// Do nothing if sample already exists
+	//for (int i=samples_list.size()-1; i >= 0; --i)
+	//	if (samples_list[i] == num) return i;
 	for (int i=samples_list.size()-1; i >= 0; --i)
-		if (samples_list[i] == num) return i;
+		if (samples_list[i].first == num) return std::make_pair(i, samples_list[i].second);
 
 	std::string name = std::string("Noise ") + std::string(metallic ? "metallic " : "normal ") + std::to_string(key);
 
@@ -228,9 +385,10 @@ int GBASamples::build_noise_sample(bool metallic, int key)
 		598, 513,	427, 342, 299, 256, 214, 171, 150, 128, 107, 85, 64
 	};
 
-	sf2->add_new_sample(psg_data, UNSIGNED_8, name.c_str(), pointer_tbl[key-42],
-					  metallic ? metallic_len_tbl[key-42] : normal_len_tbl[key-42], true, 0, key, 0, 44100);
+	//sf2->add_new_sample(psg_data, UNSIGNED_8, name.c_str(), pointer_tbl[key-42], metallic ? metallic_len_tbl[key-42] : normal_len_tbl[key-42], true, 0, key, 0, 44100);
+	std::shared_ptr<SFSample> sampleSF2Pointer = gbaToNewSample(psg_data, UNSIGNED_8, pointer_tbl[key-42], metallic ? metallic_len_tbl[key-42] : normal_len_tbl[key-42], name, 0, key, 0, 44100);
 
-	samples_list.push_back(num);
-	return samples_list.size() - 1;
+	std::vector<std::shared_ptr<SFSample>> retSampVec({sampleSF2Pointer});
+	samples_list.push_back(std::make_pair(num, retSampVec));
+	return std::make_pair(samples_list.size() - 1, retSampVec);
 }

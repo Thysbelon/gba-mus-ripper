@@ -492,10 +492,9 @@ static void process_event(int track)
 			if (sv)
 				lfo_type[track] = arg1;
 			else
-				midi.add_controller(track, 22, arg1);
+				//midi.add_controller(track, 22, arg1);
 				
-				// These CCs don't serve any purpose yet, but in the next version all ripped SF2s will have modulators that imitate GBA pitch and vol LFO. Due to the limitations of SF2 modulators, I couldn't use just cc22 to change modulation type.
-				/*
+				// all ripped SF2s have modulators that imitate GBA pitch and vol LFO. Due to the limitations of SF2 modulators, I can't use just cc22 to change modulation type.
 				if (arg1==0){
 					midi.add_controller(track, 110, 0); // ENABLE PITCH
 					midi.add_controller(track, 111, 0); // DISABLE VOL
@@ -506,7 +505,6 @@ static void process_event(int track)
 					midi.add_controller(track, 110, 127); // DISABLE PITCH
 					midi.add_controller(track, 111, 0); // DISABLE VOL
 				}
-				*/
 				// The reason the ON and OFF values for cc110 Set-LFO-to-Pitch and cc111 Set-LFO-to-Volume are different is because pitch is the default LFO type in MP2K songs; if no LFO type has been defined yet, the player should default to pitch; when a midi CC hasn't been defined, it is zero; thus, to make pitch LFO the default on midi and sf2, 0 must mean ON for pitch LFO and OFF for vol LFO.
 				// With the next version of GBA_Mus_Ripper, I will release a fork of midi2agb has been altered to read these events as LFO type.
 			return;

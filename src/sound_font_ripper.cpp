@@ -12,12 +12,19 @@
 #include <cstdint>
 #include <cmath>
 #include <cstring>
-#include "sf2.hpp"
+//#include "sf2.hpp"
+#include "sf2cute/include/sf2cute.hpp"
+#include <fstream>
 #include "gba_instr.hpp"
 #include "hex_string.hpp"
 #include <set>
+#include <utility>
 
-static FILE *outSF2;
+using namespace sf2cute;
+
+//static FILE *outSF2;
+//std::ofstream outSF2("output.sf2", std::ios::binary);
+std::string out_path;
 static FILE *out_txt = stdout;		// Log on stdout by default
 
 // Global variables
@@ -37,7 +44,10 @@ static unsigned int current_bank;
 static unsigned int current_instrument;
 static unsigned int main_volume = 15;
 
-static SF2 *sf2;
+//static SF2 *sf2;
+SoundFont sf2base;
+static SoundFont* sf2 = &sf2base;
+
 static GBAInstr *instruments;
 
 static void print_instructions()
@@ -80,12 +90,13 @@ static const char *const general_MIDI_instr_names[128] =
 };
 
 // Add initial attenuation preset to balance between GameBoy and sampled instruments
-static void add_attenuation_preset()
+static void add_attenuation_preset(SFPresetZone* preset_zone)
 {
 	if (main_volume < 15)
 	{
 		const uint16_t attenuation = uint16_t(100.0 * log(15.0/main_volume));
-		sf2->add_new_preset_generator(SFGenerator::initialAttenuation, attenuation);
+		//sf2->add_new_preset_generator(SFGenerator::initialAttenuation, attenuation);
+		preset_zone->SetGenerator(SFGeneratorItem(SFGenerator::kInitialAttenuation, attenuation));
 	}
 }
 
@@ -114,12 +125,23 @@ static void build_instrument(const inst_data inst) // TODO: add modulators at bu
 			case 0x30:
 			case 0x38:
 			{
-				int i = instruments->build_sampled_instrument(inst);
-				sf2->add_new_preset(name.c_str(), current_instrument, current_bank);
-				sf2->add_new_preset_bag();
+				//int i = instruments->build_sampled_instrument(inst); // part of GBAInstr class
+				std::pair<int, std::shared_ptr<SFInstrument>> instruRetPair = instruments->build_sampled_instrument(inst);
+				int i = instruRetPair.first;
+				std::shared_ptr<SFInstrument> insPointer = instruRetPair.second;
+				//sf2->add_new_preset(name.c_str(), current_instrument, current_bank);
+				SFPreset new_preset(name, uint16_t(current_instrument), uint16_t(current_bank));
+				//sf2->add_new_preset_bag();
+				// https://stackoverflow.com/questions/877523/error-request-for-member-in-which-is-of-non-class-type
+				SFPresetZone preset_zone;
 				// Add initial attenuation preset to balance volume between sampled and GB instruments
-				add_attenuation_preset();
-				sf2->add_new_preset_generator(SFGenerator::instrument, i);
+				add_attenuation_preset(&preset_zone);
+				preset_zone.set_instrument(insPointer);
+				//sf2->add_new_preset_generator(SFGenerator::instrument, i);
+				preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
+				new_preset.AddZone(preset_zone);
+				std::shared_ptr<SFPreset> shared_preset = std::make_shared<SFPreset>(new_preset);
+				sf2->AddPreset(shared_preset);
 			}	break;
 
 			// GameBoy pulse wave instruments
@@ -131,10 +153,17 @@ static void build_instrument(const inst_data inst) // TODO: add modulators at bu
 				// Can only convert them if the psg_data file is found
 				if (psg_data)
 				{
-					int i = instruments->build_pulse_instrument(inst);
-					sf2->add_new_preset(name.c_str(), current_instrument, current_bank);
-					sf2->add_new_preset_bag();
-					sf2->add_new_preset_generator(SFGenerator::instrument, i);
+					//int i = instruments->build_pulse_instrument(inst);
+					std::pair<int, std::shared_ptr<SFInstrument>> instruRetPair = instruments->build_pulse_instrument(inst);
+					int i = instruRetPair.first;
+					std::shared_ptr<SFInstrument> insPointer = instruRetPair.second;
+					SFPreset new_preset(name, uint16_t(current_instrument), uint16_t(current_bank));
+					SFPresetZone preset_zone;
+					preset_zone.set_instrument(insPointer);
+					preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
+					new_preset.AddZone(preset_zone);
+					std::shared_ptr<SFPreset> shared_preset = std::make_shared<SFPreset>(new_preset);
+					sf2->AddPreset(shared_preset);
 				}
 			}	break;
 
@@ -142,45 +171,74 @@ static void build_instrument(const inst_data inst) // TODO: add modulators at bu
 			case 0x03:
 			case 0x0b:
 			{
-				int i = instruments->build_GB3_instrument(inst);
-				sf2->add_new_preset(name.c_str(), current_instrument, current_bank);
-				sf2->add_new_preset_bag();
-				sf2->add_new_preset_generator(SFGenerator::instrument, i);
+				//int i = instruments->build_GB3_instrument(inst);
+				std::pair<int, std::shared_ptr<SFInstrument>> instruRetPair = instruments->build_GB3_instrument(inst);
+				int i = instruRetPair.first;
+				std::shared_ptr<SFInstrument> insPointer = instruRetPair.second;
+				SFPreset new_preset(name, uint16_t(current_instrument), uint16_t(current_bank));
+				SFPresetZone preset_zone;
+				preset_zone.set_instrument(insPointer);
+				preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
+				new_preset.AddZone(preset_zone);
+				std::shared_ptr<SFPreset> shared_preset = std::make_shared<SFPreset>(new_preset);
+				sf2->AddPreset(shared_preset);
 			}	break;
 
-			// GameBoy noise instruments, not supported yet
+			// GameBoy noise instruments, not supported yet // TODO: see if this is still true and rewrite comment if necessary
 			case 0x04:
 			case 0x0c:
 			{
 				if (psg_data)
 				{
-					int i = instruments->build_noise_instrument(inst);
-					sf2->add_new_preset(name.c_str(), current_instrument, current_bank);
-					sf2->add_new_preset_bag();
-					sf2->add_new_preset_generator(SFGenerator::instrument, i);
+					//int i = instruments->build_noise_instrument(inst);
+					std::pair<int, std::shared_ptr<SFInstrument>> instruRetPair = instruments->build_noise_instrument(inst);
+					int i = instruRetPair.first;
+					std::shared_ptr<SFInstrument> insPointer = instruRetPair.second;
+					SFPreset new_preset(name, uint16_t(current_instrument), uint16_t(current_bank));
+					SFPresetZone preset_zone;
+					preset_zone.set_instrument(insPointer);
+					preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
+					new_preset.AddZone(preset_zone);
+					std::shared_ptr<SFPreset> shared_preset = std::make_shared<SFPreset>(new_preset);
+					sf2->AddPreset(shared_preset);
 				}
 			}	break;
 
 			// Key split instrument
 			case 0x40:
 			{
-				int i = instruments->build_keysplit_instrument(inst);
-				sf2->add_new_preset(name.c_str(), current_instrument, current_bank);
-				sf2->add_new_preset_bag();
+				//int i = instruments->build_keysplit_instrument(inst);
+				std::pair<int, std::shared_ptr<SFInstrument>> instruRetPair = instruments->build_keysplit_instrument(inst);
+				int i = instruRetPair.first;
+				std::shared_ptr<SFInstrument> insPointer = instruRetPair.second;
+				SFPreset new_preset(name, uint16_t(current_instrument), uint16_t(current_bank));
+				SFPresetZone preset_zone;
+				preset_zone.set_instrument(insPointer);
 				// Add initial attenuation preset to balance volume between sampled and GB instruments
-				add_attenuation_preset();
-				sf2->add_new_preset_generator(SFGenerator::instrument, i);
+				add_attenuation_preset(&preset_zone);
+				preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
+				new_preset.AddZone(preset_zone);
+				std::shared_ptr<SFPreset> shared_preset = std::make_shared<SFPreset>(new_preset);
+				sf2->AddPreset(shared_preset);
 			}	break;
 
 			// Every key split instrument
 			case 0x80:
 			{
-				int i = instruments->build_every_keysplit_instrument(inst);
-				sf2->add_new_preset(name.c_str(), current_instrument, current_bank);
-				sf2->add_new_preset_bag();
+				//int i = instruments->build_every_keysplit_instrument(inst);
+				std::pair<int, std::shared_ptr<SFInstrument>> instruRetPair = instruments->build_every_keysplit_instrument(inst);
+				int i = instruRetPair.first;
+				std::shared_ptr<SFInstrument> insPointer = instruRetPair.second;
+				SFPreset new_preset(name, uint16_t(current_instrument), uint16_t(current_bank));
+				SFPresetZone preset_zone;
 				// Add initial attenuation preset to balance volume between sampled and GB instruments
-				add_attenuation_preset();
-				sf2->add_new_preset_generator(SFGenerator::instrument, i);
+				add_attenuation_preset(&preset_zone);
+				preset_zone.set_instrument(insPointer);
+				preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
+				//printf("%d\n", preset_zone.has_instrument());
+				new_preset.AddZone(preset_zone);
+				std::shared_ptr<SFPreset> shared_preset = std::make_shared<SFPreset>(new_preset);
+				sf2->AddPreset(shared_preset);
 			}	break;
 
 			// Ignore other instrument types
@@ -527,12 +585,15 @@ static void parse_arguments(const int argc, char *const argv[])
 				strcpy(buffer, argv[i]);
 				strcpy(buffer + l, ".sf2");
 			}
+			/*
 			outSF2 = fopen(buffer, "wb");
 			if (!outSF2)
 			{
 				fprintf(stderr, "Can't write to file: %s\n", argv[i]);
 				exit(-1);
 			}
+			*/
+			out_path.assign(buffer);
 			if (buffer != argv[i])
 				delete[] buffer;
 		}
@@ -565,6 +626,7 @@ int main(const int argc, char *const argv[])
 {
 	puts("GBA ROM sound font ripper (c) 2012 Bregalad");
 
+	puts("parsing args...");
 	// Parse arguments without the program name
 	parse_arguments(argc-1, argv+1);
 
@@ -573,9 +635,13 @@ int main(const int argc, char *const argv[])
 	std::string prg_prefix = prg_name.substr(0, prg_name.find("sound_font_ripper"));
 
 	// Create SF2 class
-	sf2 = new SF2(sample_rate);
-	instruments = new GBAInstr(sf2);
-
+	//sf2 = new SF2(sample_rate);
+	puts("setting sound_engine...");
+	sf2->set_sound_engine("EMU8000");
+	puts("sound engine set");
+	instruments = new GBAInstr(sf2, sample_rate); // TEST sample_rate
+	
+	// TODO: look for data files in ../data/, /data/, and .
 	// Attempt to access psg_data file
 	psg_data = fopen((prg_prefix + "../data/psg_data.raw").c_str(), "rb");
 	if (!psg_data)
@@ -629,7 +695,7 @@ int main(const int argc, char *const argv[])
 				verbose_instrument(instr_data[current_instrument], false);
 
 			// Build equivalent SF2 instrument
-			build_instrument(instr_data[current_instrument]);
+			build_instrument(instr_data[current_instrument]); // !
 		}
 	}
 	delete[] instr_data;
@@ -640,11 +706,16 @@ int main(const int argc, char *const argv[])
 		fclose(out_txt);
 	}
 
-	printf("Dump complete, now outputting SF2 data...");
+	printf("Dump complete, now outputting SF2 data...\n");
 
-	sf2->write(outSF2);
+	std::ofstream outSF2(out_path, std::ios::binary);
+	puts("sf2->Write...");
+	sf2->Write(outSF2);
+	puts("sf2->Write complete");
 	delete instruments;
-	delete sf2;
+	//puts("deleting sf2...");
+	//delete sf2;
+	//puts("sf2 deleted");
 
 	// Close files
 	fclose(inGBA);

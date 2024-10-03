@@ -12,6 +12,8 @@
 #include <cstdio>
 #include "hex_string.hpp"
 #include <vector>
+#include "sf2cute/include/sf2cute.hpp"
+#include <utility>
 extern FILE *inGBA;					// Related .gba file
 
 bool operator <(const inst_data&i, const inst_data& j)
@@ -28,7 +30,7 @@ uint32_t GBAInstr::get_GBA_pointer()
 	return p & 0x3FFFFFF;
 }
 
-void GBAInstr::generate_adsr_generators(const uint32_t adsr)
+void GBAInstr::generate_adsr_generators(const uint32_t adsr, SFInstrumentZone* instrument_zone /*needs to be a pointer or else instrument_zone will not be altered*/)
 {
 	// Get separate components
 	int attack = adsr & 0xFF;
@@ -43,7 +45,8 @@ void GBAInstr::generate_adsr_generators(const uint32_t adsr)
 		// and adds "attack" to envelope every time the engine is called
 		double att_time = (256/60.0) / attack;
 		double att = 1200 * log2(att_time);
-		sf2->add_new_inst_generator(SFGenerator::attackVolEnv, uint16_t(att));
+		//sf2->add_new_inst_generator(SFGenerator::attackVolEnv, uint16_t(att));
+		instrument_zone->SetGenerator(SFGeneratorItem(SFGenerator::kAttackVolEnv, /*may need to be changed to signed int*/uint16_t(att)));
 	}
 
 	if (sustain != 0xFF)
@@ -54,23 +57,26 @@ void GBAInstr::generate_adsr_generators(const uint32_t adsr)
 		// Special case where attenuation is infinite -> use max value
 		else sus = 1000;
 
-		sf2->add_new_inst_generator(SFGenerator::sustainVolEnv, uint16_t(sus));
+		//sf2->add_new_inst_generator(SFGenerator::sustainVolEnv, uint16_t(sus));
+		instrument_zone->SetGenerator(SFGeneratorItem(SFGenerator::kSustainVolEnv, uint16_t(sus)));
 
 		double dec_time = (log(256.0) /(log(256)-log(decay)))/60.0;
 		dec_time *= 10/log(256);
 		double dec = 1200 * log2(dec_time);
-		sf2->add_new_inst_generator(SFGenerator::decayVolEnv, uint16_t(dec));
+		//sf2->add_new_inst_generator(SFGenerator::decayVolEnv, uint16_t(dec));
+		instrument_zone->SetGenerator(SFGeneratorItem(SFGenerator::kDecayVolEnv, uint16_t(dec)));
 	}
 
 	if (release != 0x00)
 	{
 		double rel_time = (log(256.0)/(log(256)-log(release)))/60.0;
 		double rel = 1200 * log2(rel_time);
-		sf2->add_new_inst_generator(SFGenerator::releaseVolEnv, uint16_t(rel));
+		//sf2->add_new_inst_generator(SFGenerator::releaseVolEnv, uint16_t(rel));
+		instrument_zone->SetGenerator(SFGeneratorItem(SFGenerator::kReleaseVolEnv, uint16_t(rel)));
 	}
 }
 
-void GBAInstr::generate_psg_adsr_generators(const uint32_t adsr)
+void GBAInstr::generate_psg_adsr_generators(const uint32_t adsr, SFInstrumentZone* instrument_zone)
 {
 	// Get separate components
 	int attack = adsr & 0xFF;
@@ -88,7 +94,8 @@ void GBAInstr::generate_psg_adsr_generators(const uint32_t adsr)
 		// and adds "attack" to envelope every time the engine is called
 		double att_time = attack/5.0;
 		double att = 1200 * log2(att_time);
-		sf2->add_new_inst_generator(SFGenerator::attackVolEnv, uint16_t(att));
+		//sf2->add_new_inst_generator(SFGenerator::attackVolEnv, uint16_t(att));
+		instrument_zone->SetGenerator(SFGeneratorItem(SFGenerator::kAttackVolEnv, uint16_t(att)));
 	}
 
 	if (sustain != 15)
@@ -99,23 +106,26 @@ void GBAInstr::generate_psg_adsr_generators(const uint32_t adsr)
 		// Special case where attenuation is infinite -> use max value
 		else sus = 1000;
 
-		sf2->add_new_inst_generator(SFGenerator::sustainVolEnv, uint16_t(sus));
+		//sf2->add_new_inst_generator(SFGenerator::sustainVolEnv, uint16_t(sus));
+		instrument_zone->SetGenerator(SFGeneratorItem(SFGenerator::kSustainVolEnv, uint16_t(sus)));
 
 		double dec_time = decay/5.0;
 		double dec = 1200 * log2(dec_time+1);
-		sf2->add_new_inst_generator(SFGenerator::decayVolEnv, uint16_t(dec));
+		//sf2->add_new_inst_generator(SFGenerator::decayVolEnv, uint16_t(dec));
+		instrument_zone->SetGenerator(SFGeneratorItem(SFGenerator::kDecayVolEnv, uint16_t(dec)));
 	}
 
 	if (release != 0)
 	{
 		double rel_time = release/5.0;
 		double rel = 1200 * log2(rel_time);
-		sf2->add_new_inst_generator(SFGenerator::releaseVolEnv, uint16_t(rel));
+		//sf2->add_new_inst_generator(SFGenerator::releaseVolEnv, uint16_t(rel));
+		instrument_zone->SetGenerator(SFGeneratorItem(SFGenerator::kReleaseVolEnv, uint16_t(rel)));
 	}
 }
 
 // Build a SF2 instrument form a GBA sampled instrument
-int GBAInstr::build_sampled_instrument(const inst_data inst)
+std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_sampled_instrument(const inst_data inst)
 {
 	// Do nothing if this instrument already exists !
 	inst_it it = inst_map.find(inst);
@@ -132,34 +142,134 @@ int GBAInstr::build_sampled_instrument(const inst_data inst)
 	bool loop_flag = fgetc(inGBA) == 0x40;
 
 	// Build pointed sample
-	int sample_index = samples.build_sample(sample_pointer);
+	//int sample_index = samples.build_sample(sample_pointer);
+	std::pair< int, std::vector< std::shared_ptr<SFSample> > > sampleRetPair = samples.build_sample(sample_pointer);
+	int sample_index = sampleRetPair.first;
+	std::shared_ptr<SFSample> sampleSF2Pointer = sampleRetPair.second[0];
 
 	// Instrument's name
 	std::string name = "sample @0x" + hex(sample_pointer);
 
 	// Create instrument bag
-	sf2->add_new_instrument(name.c_str());
-	sf2->add_new_inst_bag();
+	//sf2->add_new_instrument(name.c_str());
+	//sf2->add_new_inst_bag();
+	SFInstrument new_instrument(name);
+	SFInstrumentZone instrument_zone;
+	// later: new_instrument.AddZone(instrument_zone); sf2->AddInstrument(new_instrument)
 
 	// Add generator to prevent scaling if required
+	//if (no_scale)
+	//	sf2->add_new_inst_generator(SFGenerator::scaleTuning, 0);
 	if (no_scale)
-		sf2->add_new_inst_generator(SFGenerator::scaleTuning, 0);
+		instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kScaleTuning, 0));
 
-	generate_adsr_generators(inst.word2);
-	sf2->add_new_inst_generator(SFGenerator::sampleModes, loop_flag ? 1 : 0);
-	sf2->add_new_inst_generator(SFGenerator::sampleID, sample_index);
+	//generate_adsr_generators(inst.word2);
+	generate_adsr_generators(inst.word2, &instrument_zone);
+	//sf2->add_new_inst_generator(SFGenerator::sampleModes, loop_flag ? 1 : 0);
+	instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kSampleModes, loop_flag ? 1 : 0));
+	//sf2->add_new_inst_generator(SFGenerator::sampleID, sample_index);
+	instrument_zone.set_sample(sampleSF2Pointer);
+	instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kSampleID, sample_index)); // Instead of creating the instrument with the sample, the instrument is created empty then the sampleID is set afterwards. (the sample has already been added to the soundfont). *However*, this doesn't work with sf2cute because it requires passing pointers. sf2.cpp probably also did pointer stuff internally.
+	
+	// set various modulators to more accurately match GBA output. TODO: make these -raw only? TODO: research which instrument types use LFO
 	
 	// override the default pitch modulator for CC1 to prevent unnecessary vibrato where the original song had panpot or volume modulation. https://www.mail-archive.com/fluid-dev@nongnu.org/msg05330.html
-	//sf2->add_new_inst_modulator();
-	// sf2.cpp by Bregalad does not have functional modulator support. TODO: add modulator support to sf2.cpp
+	SFInstrumentZone global_instrument_zone;
+	// disable default modDepth2VibLFOpitch modulator
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kModulationDepth,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kVibLfoToPitch,
+		0,
+		SFModulator(0),
+		SFTransform::kLinear));
+
+	// GBA modDepth2VibLFOpitch modulator that only activates when CC110 is 0
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kModulationDepth,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kVibLfoToPitch,
+		50,
+		SFModulator(SFMidiController::kController110,
+			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kSwitch),
+		SFTransform::kLinear));
+
+	// GBA modDepth2ModLFOvol modulator that only activates when CC111 is 127
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kModulationDepth,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kModLfoToVolume,
+		300,
+		SFModulator(SFMidiController::kController111,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kSwitch),
+		SFTransform::kLinear));
+
+	// GBA mod-speed modulator vib
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kController21,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kFreqVibLFO,
+		2000,
+		SFModulator(0),
+		SFTransform::kLinear));
+
+	// GBA mod-speed modulator mod
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kController21,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kFreqModLFO,
+		2000,
+		SFModulator(0),
+		SFTransform::kLinear));
+
+	// GBA mod-delay modulator vib
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kController26,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kConvex),
+		SFGenerator::kDelayVibLFO,
+		15000,
+		SFModulator(0),
+		SFTransform::kLinear));
+
+	// GBA mod-delay modulator mod
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kController26,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kConvex),
+		SFGenerator::kDelayModLFO,
+		15000,
+		SFModulator(0),
+		SFTransform::kLinear));
+	
+	new_instrument.set_global_zone(global_instrument_zone);
+	
+	// finish making instrument and insert into sf2 (I think the old library sf2.cpp did this automatically)
+	new_instrument.AddZone(instrument_zone);
+	std::shared_ptr<SFInstrument> shared_instrument = std::make_shared<SFInstrument>(new_instrument);
+	sf2->AddInstrument(shared_instrument);
 
 	// Add instrument to list
-	inst_map[inst] = cur_inst_index;
-	return cur_inst_index ++;
+	//inst_map[inst] = cur_inst_index;
+	inst_map[inst] = std::make_pair(cur_inst_index, shared_instrument);
+	//return cur_inst_index ++;
+	
+	//std::pair<int, std::shared_ptr<SFInstrument>> retPair;
+	//retPair.first = cur_inst_index ++;
+	//retPair.second = shared_instrument;
+	//return retPair;
+	return std::make_pair(cur_inst_index ++, shared_instrument);
 }
 
 // Create new SF2 from every key split GBA instrument
-int GBAInstr::build_every_keysplit_instrument(const inst_data inst)
+std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_every_keysplit_instrument(const inst_data inst)
 {
 	// Do nothing if this instrument already exists !
 	inst_it it = inst_map.find(inst);
@@ -170,7 +280,88 @@ int GBAInstr::build_every_keysplit_instrument(const inst_data inst)
 	// therefore I didn't really had a choice.
 	uint32_t baseaddress = inst.word1 & 0x3ffffff;
 	std::string name = "EveryKeySplit @0x" + hex(baseaddress);
-	sf2->add_new_instrument(name.c_str());
+	//sf2->add_new_instrument(name.c_str());
+	SFInstrument new_instrument(name);
+	
+	// START LFO MODULATORS
+	SFInstrumentZone global_instrument_zone;
+	
+	// disable default modDepth2VibLFOpitch modulator
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kModulationDepth,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kVibLfoToPitch,
+		0,
+		SFModulator(0),
+		SFTransform::kLinear));
+
+	// GBA modDepth2VibLFOpitch modulator that only activates when CC110 is 0
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kModulationDepth,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kVibLfoToPitch,
+		50,
+		SFModulator(SFMidiController::kController110,
+			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kSwitch),
+		SFTransform::kLinear));
+
+	// GBA modDepth2ModLFOvol modulator that only activates when CC111 is 127
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kModulationDepth,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kModLfoToVolume,
+		300,
+		SFModulator(SFMidiController::kController111,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kSwitch),
+		SFTransform::kLinear));
+
+	// GBA mod-speed modulator vib
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kController21,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kFreqVibLFO,
+		2000,
+		SFModulator(0),
+		SFTransform::kLinear));
+
+	// GBA mod-speed modulator mod
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kController21,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kFreqModLFO,
+		2000,
+		SFModulator(0),
+		SFTransform::kLinear));
+
+	// GBA mod-delay modulator vib
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kController26,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kConvex),
+		SFGenerator::kDelayVibLFO,
+		15000,
+		SFModulator(0),
+		SFTransform::kLinear));
+
+	// GBA mod-delay modulator mod
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kController26,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kConvex),
+		SFGenerator::kDelayModLFO,
+		15000,
+		SFModulator(0),
+		SFTransform::kLinear));
+	
+	new_instrument.set_global_zone(global_instrument_zone);	
+	// END LFO MODULATORS
 
 	// Loop through all keys
 	for (int key = 0; key < 128; key ++)
@@ -196,8 +387,12 @@ int GBAInstr::build_every_keysplit_instrument(const inst_data inst)
 			fread(&adsr, 4, 1, inGBA);
 
 			int sample_index;
+			std::pair< int, std::vector< std::shared_ptr<SFSample> > > sampleRetPair;
+			std::shared_ptr<SFSample> sampleSF2Pointer;
 			bool loop_flag = true;
 
+			SFInstrumentZone instrument_zone; // variable must be in scope for those last few generators
+			
 			switch (instrType & 0x0f)
 			{
 				case 8:
@@ -213,22 +408,29 @@ int GBAInstr::build_every_keysplit_instrument(const inst_data inst)
 					fread(&pitch, 4, 1, inGBA);
 
 					// Build pointed sample
-					sample_index = samples.build_sample(sample_pointer);
+					//sample_index = samples.build_sample(sample_pointer);
+					sampleRetPair = samples.build_sample(sample_pointer);
+					sample_index = sampleRetPair.first;
+					sampleSF2Pointer = sampleRetPair.second[0];
 
 					// Add a bag for this key
-					sf2->add_new_inst_bag();
-					sf2->add_new_inst_generator(SFGenerator::keyRange, key, key);
-					generate_adsr_generators(adsr);
+					//sf2->add_new_inst_bag();
+					//SFInstrumentZone instrument_zone();
+					//sf2->add_new_inst_generator(SFGenerator::keyRange, key, key);
+					instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kKeyRange, RangesType(key, key)));
+					//generate_adsr_generators(adsr);
+					generate_adsr_generators(adsr, &instrument_zone);
 					// Add generator to prevent scaling if required
 					if (no_scale)
-						sf2->add_new_inst_generator(SFGenerator::scaleTuning, 0);
+						instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kScaleTuning, 0));
 
 					// Compute base note and fine tune from pitch
-					double delta_note = 12.0 * log2(sf2->default_sample_rate * 1024.0 / pitch);
+					double delta_note = 12.0 * log2(default_sample_rate * 1024.0 / pitch);
 					int rootkey = 60 + int(round(delta_note));
 
 					// Override root key with the value we need
-					sf2->add_new_inst_generator(SFGenerator::overridingRootKey, rootkey - keynum + key);
+					//sf2->add_new_inst_generator(SFGenerator::overridingRootKey, rootkey - keynum + key);
+					instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kOverridingRootKey, rootkey - keynum + key));
 					
 				}	break;
 
@@ -245,32 +447,54 @@ int GBAInstr::build_every_keysplit_instrument(const inst_data inst)
 						throw -1;
 
 					// Build corresponding sample
-					sample_index = samples.build_noise_sample(metal_flag, keynum);
-					sf2->add_new_inst_bag();
-					sf2->add_new_inst_generator(SFGenerator::keyRange, key, key);
-					generate_psg_adsr_generators(adsr);
-					sf2->add_new_inst_generator(SFGenerator::overridingRootKey, key);
+					//sample_index = samples.build_noise_sample(metal_flag, keynum);
+					sampleRetPair = samples.build_noise_sample(metal_flag, keynum);
+					sample_index = sampleRetPair.first;
+					sampleSF2Pointer = sampleRetPair.second[0];
+					//sf2->add_new_inst_bag();
+					//SFInstrumentZone instrument_zone();
+					//sf2->add_new_inst_generator(SFGenerator::keyRange, key, key);
+					instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kKeyRange, RangesType(key, key)));
+					//generate_psg_adsr_generators(adsr);
+					generate_psg_adsr_generators(adsr, &instrument_zone);
+					//sf2->add_new_inst_generator(SFGenerator::overridingRootKey, key);
+					instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kOverridingRootKey, key));
 				}	break;
 
 				// Ignore other kind of instruments
 				default : throw -1;
 			}
 
+			//if (panning != 0)
+			//	sf2->add_new_inst_generator(SFGenerator::pan, int((panning-192) * (500/128.0)));
 			if (panning != 0)
-				sf2->add_new_inst_generator(SFGenerator::pan, int((panning-192) * (500/128.0)));
+				instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kPan, int((panning-192) * (500/128.0))));
 			// Same as a normal sample
-			sf2->add_new_inst_generator(SFGenerator::sampleModes, loop_flag ? 1 : 0);
-			sf2->add_new_inst_generator(SFGenerator::sampleID, sample_index);
+			//sf2->add_new_inst_generator(SFGenerator::sampleModes, loop_flag ? 1 : 0);
+			instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kSampleModes, loop_flag ? 1 : 0));
+			//sf2->add_new_inst_generator(SFGenerator::sampleID, sample_index);
+			instrument_zone.set_sample(sampleSF2Pointer);
+			instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kSampleID, sample_index));
+			
+			// add instrument_zone to instrument (added with sf2cute)
+			new_instrument.AddZone(instrument_zone);
 		}
 		catch (...) {}	// Continue to next key when there is a major problem
 	}
 	// Add instrument to list
-	inst_map[inst] = cur_inst_index;
-	return cur_inst_index ++;
+	std::shared_ptr<SFInstrument> shared_instrument = std::make_shared<SFInstrument>(new_instrument);
+	sf2->AddInstrument(shared_instrument);
+	//inst_map[inst] = cur_inst_index;
+	inst_map[inst] = std::make_pair(cur_inst_index, shared_instrument);
+	//return cur_inst_index ++;
+	std::pair<int, std::shared_ptr<SFInstrument>> retPair;
+	retPair.first = cur_inst_index ++;
+	retPair.second = shared_instrument;
+	return retPair;
 }
 
 // Build a SF2 instrument from a GBA key split instrument
-int GBAInstr::build_keysplit_instrument(const inst_data inst)
+std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_keysplit_instrument(const inst_data inst)
 {
 	// Do nothing if this instrument already exists !
 	inst_it it = inst_map.find(inst);
@@ -289,7 +513,87 @@ int GBAInstr::build_keysplit_instrument(const inst_data inst)
 
 	// Add instrument to list
 	std::string name = "0x" + hex(base_pointer) + " key split";
-	sf2->add_new_instrument(name.c_str());
+	//sf2->add_new_instrument(name.c_str());
+	SFInstrument new_instrument(name);
+	
+	// START LFO MODULATORS
+	SFInstrumentZone global_instrument_zone;
+	// disable default modDepth2VibLFOpitch modulator
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kModulationDepth,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kVibLfoToPitch,
+		0,
+		SFModulator(0),
+		SFTransform::kLinear));
+
+	// GBA modDepth2VibLFOpitch modulator that only activates when CC110 is 0
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kModulationDepth,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kVibLfoToPitch,
+		50,
+		SFModulator(SFMidiController::kController110,
+			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kSwitch),
+		SFTransform::kLinear));
+
+	// GBA modDepth2ModLFOvol modulator that only activates when CC111 is 127
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kModulationDepth,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kModLfoToVolume,
+		300,
+		SFModulator(SFMidiController::kController111,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kSwitch),
+		SFTransform::kLinear));
+
+	// GBA mod-speed modulator vib
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kController21,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kFreqVibLFO,
+		2000,
+		SFModulator(0),
+		SFTransform::kLinear));
+
+	// GBA mod-speed modulator mod
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kController21,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear),
+		SFGenerator::kFreqModLFO,
+		2000,
+		SFModulator(0),
+		SFTransform::kLinear));
+
+	// GBA mod-delay modulator vib
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kController26,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kConvex),
+		SFGenerator::kDelayVibLFO,
+		15000,
+		SFModulator(0),
+		SFTransform::kLinear));
+
+	// GBA mod-delay modulator mod
+	global_instrument_zone.SetModulator(SFModulatorItem(
+			SFModulator(SFMidiController::kController26,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kConvex),
+		SFGenerator::kDelayModLFO,
+		15000,
+		SFModulator(0),
+		SFTransform::kLinear));
+	
+	new_instrument.set_global_zone(global_instrument_zone);
+	// END LFO MODULATORS
 
 	do
 	{
@@ -345,30 +649,50 @@ int GBAInstr::build_keysplit_instrument(const inst_data inst)
 			bool loop_flag = fgetc(inGBA) == 0x40;
 
 			// Build pointed sample
-			int sample_index = samples.build_sample(sample_pointer);
+			//int sample_index = samples.build_sample(sample_pointer);
+			std::pair< uint32_t, std::vector< std::shared_ptr<SFSample> > > sampleRetPair = samples.build_sample(sample_pointer);
+			int sample_index = sampleRetPair.first;
+			std::shared_ptr<SFSample> sampleSF2Pointer = sampleRetPair.second[0];
 
 			// Create instrument bag
-			sf2->add_new_inst_bag();
+			//sf2->add_new_inst_bag();
+			SFInstrumentZone instrument_zone;
 
 			// Particularity here : An additional bag to select the key range
-			sf2->add_new_inst_generator(SFGenerator::keyRange, split_list[i], split_list[i+1]-1);
+			//sf2->add_new_inst_generator(SFGenerator::keyRange, split_list[i], split_list[i+1]-1);
+			instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kKeyRange, RangesType(split_list[i], split_list[i+1]-1)));
 
 			// Add generator to prevent scaling if required
+			//if (no_scale)
+			//	sf2->add_new_inst_generator(SFGenerator::scaleTuning, 0);
 			if (no_scale)
-				sf2->add_new_inst_generator(SFGenerator::scaleTuning, 0);
+				instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kScaleTuning, 0));
 
-			generate_adsr_generators(adsr);
-			sf2->add_new_inst_generator(SFGenerator::sampleModes, loop_flag ? 1 : 0);
-			sf2->add_new_inst_generator(SFGenerator::sampleID, sample_index);
+			generate_adsr_generators(adsr, &instrument_zone);
+			//sf2->add_new_inst_generator(SFGenerator::sampleModes, loop_flag ? 1 : 0);
+			instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kSampleModes, loop_flag ? 1 : 0));
+			//sf2->add_new_inst_generator(SFGenerator::sampleID, sample_index);
+			instrument_zone.set_sample(sampleSF2Pointer);
+			instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kSampleID, sample_index));
+			
+			// add zone to instrument
+			new_instrument.AddZone(instrument_zone);
 		}
-		catch (...) {}		// Silently continue to next key if anything bad happens
+		catch (...) {}		// Silently continue to next key if anything bad happens // TODO: put warning message here.
 	}
-	inst_map[inst] = cur_inst_index;
-	return cur_inst_index ++;
+	std::shared_ptr<SFInstrument> shared_instrument = std::make_shared<SFInstrument>(new_instrument);
+	sf2->AddInstrument(shared_instrument);
+	//inst_map[inst] = cur_inst_index;
+	inst_map[inst] = std::make_pair(cur_inst_index, shared_instrument);
+	//return cur_inst_index ++;
+	std::pair<int, std::shared_ptr<SFInstrument>> retPair;
+	retPair.first = cur_inst_index ++;
+	retPair.second = shared_instrument;
+	return retPair;
 }
 
 // Build gameboy channel 3 instrument
-int GBAInstr::build_GB3_instrument(const inst_data inst)
+std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_GB3_instrument(const inst_data inst) // TODO: does this use LFO?
 {
 	// Do nothing if this instrument already exists !
 	inst_it it = inst_map.find(inst);
@@ -380,38 +704,81 @@ int GBAInstr::build_GB3_instrument(const inst_data inst)
 	// Try to seek to see if the pointer is valid, if it's not then abort
 	if (fseek(inGBA, sample_pointer, SEEK_SET)) throw -1;
 
-	int sample = samples.build_GB3_samples(sample_pointer);
+	//int sample = samples.build_GB3_samples(sample_pointer);
+	std::pair< int, std::vector< std::shared_ptr<SFSample> > > sampleRetPair = samples.build_GB3_samples(sample_pointer);
+	int sample = sampleRetPair.first;
+	std::vector< std::shared_ptr<SFSample> > sampleSF2PointerVector = sampleRetPair.second; // contains 4 samples
 
 	std::string name = "GB3 @0x" + hex(sample_pointer);
-	sf2->add_new_instrument(name.c_str());
+	//sf2->add_new_instrument(name.c_str());
+	SFInstrument new_instrument(name);
 
 	// Global zone
-	sf2->add_new_inst_bag();
-	generate_psg_adsr_generators(inst.word2);
+	//sf2->add_new_inst_bag();
+	SFInstrumentZone instrument_zone;
+	generate_psg_adsr_generators(inst.word2, &instrument_zone); // looking at the global instrument zone in polyphone, there are no adsr settings, so this statement doesn't do anything? The same is true of both sf2.cpp and sf2cute.
+	//new_instrument.AddZone(instrument_zone);
+	new_instrument.set_global_zone(instrument_zone);
 
-	sf2->add_new_inst_bag();
-	sf2->add_new_inst_generator(SFGenerator::keyRange, 0, 52);
-	sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
-	sf2->add_new_inst_generator(SFGenerator::sampleID, sample-3);
-	sf2->add_new_inst_bag();
-	sf2->add_new_inst_generator(SFGenerator::keyRange, 53, 64);
-	sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
-	sf2->add_new_inst_generator(SFGenerator::sampleID, sample-2);
-	sf2->add_new_inst_bag();
-	sf2->add_new_inst_generator(SFGenerator::keyRange, 65, 76);
-	sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
-	sf2->add_new_inst_generator(SFGenerator::sampleID, sample-1);
-	sf2->add_new_inst_bag();
-	sf2->add_new_inst_generator(SFGenerator::keyRange, 77, 127);
-	sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
-	sf2->add_new_inst_generator(SFGenerator::sampleID, sample);
+	int myNum[8] = {0, 52, 53, 64, 65, 76, 77, 127};
+	for (int i=0; i<4; i++){
+		SFInstrumentZone instrument_zone_inner;
+		instrument_zone_inner.SetGenerator(SFGeneratorItem(SFGenerator::kKeyRange, RangesType(myNum[i*2], myNum[i*2+1])));
+		instrument_zone_inner.SetGenerator(SFGeneratorItem(SFGenerator::kSampleModes, 1));
+		instrument_zone_inner.set_sample(sampleSF2PointerVector[i]);
+		instrument_zone_inner.SetGenerator(SFGeneratorItem(SFGenerator::kSampleID, sample-(3-i)));
+		new_instrument.AddZone(instrument_zone_inner);
+	}
+	////sf2->add_new_inst_bag();
+	//SFInstrumentZone instrument_zone1();
+	////sf2->add_new_inst_generator(SFGenerator::keyRange, 0, 52);
+	//instrument_zone1.SetGenerator(SFGeneratorItem(SFGenerator::kKeyRange, RangesType(0, 52)));
+	////sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
+	//instrument_zone1.SetGenerator(SFGeneratorItem(SFGenerator::kSampleModes, 1));
+	////sf2->add_new_inst_generator(SFGenerator::sampleID, sample-3);
+	//instrument_zone1.SetGenerator(SFGeneratorItem(SFGenerator::kSampleID, sample-3));
+	//new_instrument.AddZone(instrument_zone1);
+	////sf2->add_new_inst_bag();
+	//SFInstrumentZone instrument_zone2();
+	////sf2->add_new_inst_generator(SFGenerator::keyRange, 53, 64);
+	//instrument_zone2.SetGenerator(SFGeneratorItem(SFGenerator::kKeyRange, RangesType(53, 64)));
+	////sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
+	//instrument_zone2.SetGenerator(SFGeneratorItem(SFGenerator::kSampleModes, 1));
+	////sf2->add_new_inst_generator(SFGenerator::sampleID, sample-2);
+	//instrument_zone2.SetGenerator(SFGeneratorItem(SFGenerator::kSampleID, sample-2));
+	//new_instrument.AddZone(instrument_zone2);
+	////sf2->add_new_inst_bag();
+	//SFInstrumentZone instrument_zone3();
+	////sf2->add_new_inst_generator(SFGenerator::keyRange, 65, 76);
+	//instrument_zone3.SetGenerator(SFGeneratorItem(SFGenerator::kKeyRange, RangesType(65, 76)));
+	////sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
+	//instrument_zone3.SetGenerator(SFGeneratorItem(SFGenerator::kSampleModes, 1));
+	////sf2->add_new_inst_generator(SFGenerator::sampleID, sample-1);
+	//instrument_zone3.SetGenerator(SFGeneratorItem(SFGenerator::kSampleID, sample-1));
+	//new_instrument.AddZone(instrument_zone3);
+	////sf2->add_new_inst_bag();
+	//SFInstrumentZone instrument_zone4();
+	////sf2->add_new_inst_generator(SFGenerator::keyRange, 77, 127);
+	//instrument_zone4.SetGenerator(SFGeneratorItem(SFGenerator::kKeyRange, RangesType(77, 127)));
+	////sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
+	//instrument_zone4.SetGenerator(SFGeneratorItem(SFGenerator::kSampleModes, 1));
+	////sf2->add_new_inst_generator(SFGenerator::sampleID, sample);
+	//instrument_zone4.SetGenerator(SFGeneratorItem(SFGenerator::kSampleID, sample));
+	//new_instrument.AddZone(instrument_zone4);
 
-	inst_map[inst] = cur_inst_index;
-	return cur_inst_index ++;
+	std::shared_ptr<SFInstrument> shared_instrument = std::make_shared<SFInstrument>(new_instrument);
+	sf2->AddInstrument(shared_instrument);
+	//inst_map[inst] = cur_inst_index;
+	inst_map[inst] = std::make_pair(cur_inst_index, shared_instrument);
+	//return cur_inst_index ++;
+	std::pair<int, std::shared_ptr<SFInstrument>> retPair;
+	retPair.first = cur_inst_index ++;
+	retPair.second = shared_instrument;
+	return retPair;
 }
 
 // Build GameBoy pulse wave instrument
-int GBAInstr::build_pulse_instrument(const inst_data inst)
+std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_pulse_instrument(const inst_data inst) // TODO: does this use LFO?
 {
 	// Do nothing if this instrument already exists !
 	inst_it it = inst_map.find(inst);
@@ -423,41 +790,63 @@ int GBAInstr::build_pulse_instrument(const inst_data inst)
 	if (duty_cycle == 3) duty_cycle = 1;
 	if (duty_cycle > 3) throw -1;
 
-	int sample = samples.build_pulse_samples(duty_cycle);
+	//int sample = samples.build_pulse_samples(duty_cycle);
+	std::pair< int, std::vector< std::shared_ptr<SFSample> > > sampleRetPair = samples.build_pulse_samples(duty_cycle);
+	int sample = sampleRetPair.first;
+	std::vector< std::shared_ptr<SFSample> > sampleSF2PointerVector = sampleRetPair.second; // contains 5 samples
 	std::string name = "pulse " + std::to_string(duty_cycle);
-	sf2->add_new_instrument(name.c_str());
+	//sf2->add_new_instrument(name.c_str());
+	SFInstrument new_instrument(name);
 
 	// Global zone
-	sf2->add_new_inst_bag();
-	generate_psg_adsr_generators(inst.word2);
+	//sf2->add_new_inst_bag();
+	SFInstrumentZone instrument_zone;
+	generate_psg_adsr_generators(inst.word2, &instrument_zone);
+	new_instrument.set_global_zone(instrument_zone);
 
-	sf2->add_new_inst_bag();
-	sf2->add_new_inst_generator(SFGenerator::keyRange, 0, 45);
-	sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
-	sf2->add_new_inst_generator(SFGenerator::sampleID, sample-4);
-	sf2->add_new_inst_bag();
-	sf2->add_new_inst_generator(SFGenerator::keyRange, 46, 57);
-	sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
-	sf2->add_new_inst_generator(SFGenerator::sampleID, sample-3);
-	sf2->add_new_inst_bag();
-	sf2->add_new_inst_generator(SFGenerator::keyRange, 58, 69);
-	sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
-	sf2->add_new_inst_generator(SFGenerator::sampleID, sample-2);
-	sf2->add_new_inst_bag();
-	sf2->add_new_inst_generator(SFGenerator::keyRange, 70, 81);
-	sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
-	sf2->add_new_inst_generator(SFGenerator::sampleID, sample-1);
-	sf2->add_new_inst_bag();
-	sf2->add_new_inst_generator(SFGenerator::keyRange, 82, 127);
-	sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
-	sf2->add_new_inst_generator(SFGenerator::sampleID, sample);
+	int myNum[10] = {0, 45, 46, 57, 58, 69, 70, 81, 82, 127};
+	for (int i=0; i<5; i++){
+		SFInstrumentZone instrument_zone_inner;
+		instrument_zone_inner.SetGenerator(SFGeneratorItem(SFGenerator::kKeyRange, RangesType(myNum[i*2], myNum[i*2+1])));
+		instrument_zone_inner.SetGenerator(SFGeneratorItem(SFGenerator::kSampleModes, 1));
+		instrument_zone_inner.set_sample(sampleSF2PointerVector[i]);
+		instrument_zone_inner.SetGenerator(SFGeneratorItem(SFGenerator::kSampleID, sample-(4-i)));
+		new_instrument.AddZone(instrument_zone_inner);
+	}
+	//sf2->add_new_inst_bag();
+	//sf2->add_new_inst_generator(SFGenerator::keyRange, 0, 45);
+	//sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
+	//sf2->add_new_inst_generator(SFGenerator::sampleID, sample-4);
+	//sf2->add_new_inst_bag();
+	//sf2->add_new_inst_generator(SFGenerator::keyRange, 46, 57);
+	//sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
+	//sf2->add_new_inst_generator(SFGenerator::sampleID, sample-3);
+	//sf2->add_new_inst_bag();
+	//sf2->add_new_inst_generator(SFGenerator::keyRange, 58, 69);
+	//sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
+	//sf2->add_new_inst_generator(SFGenerator::sampleID, sample-2);
+	//sf2->add_new_inst_bag();
+	//sf2->add_new_inst_generator(SFGenerator::keyRange, 70, 81);
+	//sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
+	//sf2->add_new_inst_generator(SFGenerator::sampleID, sample-1);
+	//sf2->add_new_inst_bag();
+	//sf2->add_new_inst_generator(SFGenerator::keyRange, 82, 127);
+	//sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
+	//sf2->add_new_inst_generator(SFGenerator::sampleID, sample);
 
-	inst_map[inst] = cur_inst_index;
-	return cur_inst_index ++;
+	std::shared_ptr<SFInstrument> shared_instrument = std::make_shared<SFInstrument>(new_instrument);
+	sf2->AddInstrument(shared_instrument);
+	//inst_map[inst] = cur_inst_index;
+	inst_map[inst] = std::make_pair(cur_inst_index, shared_instrument);
+	//return cur_inst_index ++;
+	std::pair<int, std::shared_ptr<SFInstrument>> retPair;
+	retPair.first = cur_inst_index ++;
+	retPair.second = shared_instrument;
+	return retPair;
 }
 
 // Build GameBoy white noise instrument
-int GBAInstr::build_noise_instrument(const inst_data inst)
+std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_noise_instrument(const inst_data inst) // TODO: does this use LFO?
 {
 	// Do nothing if this instrument already exists !
 	inst_it it = inst_map.find(inst);
@@ -468,34 +857,73 @@ int GBAInstr::build_noise_instrument(const inst_data inst)
 	bool metallic = inst.word1;
 
 	std::string name = metallic ? "GB metallic noise" : "GB noise";
-	sf2->add_new_instrument(name.c_str());
+	//sf2->add_new_instrument(name.c_str());
+	SFInstrument new_instrument(name);
 
 	// Global zone
-	sf2->add_new_inst_bag();
-	generate_psg_adsr_generators(inst.word2);
+	//sf2->add_new_inst_bag();
+	//generate_psg_adsr_generators(inst.word2);
+	SFInstrumentZone instrument_zone;
+	generate_psg_adsr_generators(inst.word2, &instrument_zone);
+	new_instrument.set_global_zone(instrument_zone);
 
-	sf2->add_new_inst_bag();
-	int sample42 = samples.build_noise_sample(metallic, 42);
-	sf2->add_new_inst_generator(SFGenerator::keyRange, 0, 42);
-	sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
-	sf2->add_new_inst_generator(SFGenerator::sampleID, sample42);
+	//sf2->add_new_inst_bag();
+	SFInstrumentZone instrument_zone2;
+	//int sample42 = samples.build_noise_sample(metallic, 42);
+	std::pair< int, std::vector< std::shared_ptr<SFSample> > > sampleRetPair42 = samples.build_noise_sample(metallic, 42);
+	int sample42 = sampleRetPair42.first;
+	std::shared_ptr<SFSample> sampleSF2Pointer42 = sampleRetPair42.second[0];
+	//sf2->add_new_inst_generator(SFGenerator::keyRange, 0, 42);
+	instrument_zone2.SetGenerator(SFGeneratorItem(SFGenerator::kKeyRange, RangesType(0, 42)));
+	//sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
+	instrument_zone2.SetGenerator(SFGeneratorItem(SFGenerator::kSampleModes, 1));
+	//sf2->add_new_inst_generator(SFGenerator::sampleID, sample42);
+	instrument_zone2.set_sample(sampleSF2Pointer42);
+	instrument_zone2.SetGenerator(SFGeneratorItem(SFGenerator::kSampleID, sample42));
+	new_instrument.AddZone(instrument_zone2);
 
 	for (int key = 43; key <=77; key++)
 	{
-		sf2->add_new_inst_bag();
-		int sample = samples.build_noise_sample(metallic, key);
-		sf2->add_new_inst_generator(SFGenerator::keyRange, key, key);
-		sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
-		sf2->add_new_inst_generator(SFGenerator::sampleID, sample);
+		//sf2->add_new_inst_bag();
+		SFInstrumentZone instrument_zone_key;
+		//int sample = samples.build_noise_sample(metallic, key);
+		std::pair< int, std::vector< std::shared_ptr<SFSample> > > sampleRetPair_key = samples.build_noise_sample(metallic, key);
+		int sample = sampleRetPair_key.first;
+		std::shared_ptr<SFSample> sampleSF2Pointer_key = sampleRetPair_key.second[0];
+		//sf2->add_new_inst_generator(SFGenerator::keyRange, key, key);
+		instrument_zone_key.SetGenerator(SFGeneratorItem(SFGenerator::kKeyRange, RangesType(key, key)));
+		//sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
+		instrument_zone_key.SetGenerator(SFGeneratorItem(SFGenerator::kSampleModes, 1));
+		//sf2->add_new_inst_generator(SFGenerator::sampleID, sample);
+		instrument_zone_key.set_sample(sampleSF2Pointer_key);
+		instrument_zone_key.SetGenerator(SFGeneratorItem(SFGenerator::kSampleID, sample));
+		new_instrument.AddZone(instrument_zone_key);
 	}
 
-	sf2->add_new_inst_bag();
-	int sample78 = samples.build_noise_sample(metallic, 78);
-	sf2->add_new_inst_generator(SFGenerator::keyRange, 78, 127);
-	sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
-	sf2->add_new_inst_generator(SFGenerator::scaleTuning, 0);
-	sf2->add_new_inst_generator(SFGenerator::sampleID, sample78);
+	//sf2->add_new_inst_bag();
+	SFInstrumentZone instrument_zone3;
+	//int sample78 = samples.build_noise_sample(metallic, 78);
+	std::pair< int, std::vector< std::shared_ptr<SFSample> > > sampleRetPair78 = samples.build_noise_sample(metallic, 78);
+	int sample78 = sampleRetPair78.first;
+	std::shared_ptr<SFSample> sampleSF2Pointer78 = sampleRetPair78.second[0];
+	//sf2->add_new_inst_generator(SFGenerator::keyRange, 78, 127);
+	instrument_zone3.SetGenerator(SFGeneratorItem(SFGenerator::kKeyRange, RangesType(78, 127)));
+	//sf2->add_new_inst_generator(SFGenerator::sampleModes, 1);
+	instrument_zone3.SetGenerator(SFGeneratorItem(SFGenerator::kSampleModes, 1));
+	//sf2->add_new_inst_generator(SFGenerator::scaleTuning, 0);
+	instrument_zone3.SetGenerator(SFGeneratorItem(SFGenerator::kScaleTuning, 0));
+	//sf2->add_new_inst_generator(SFGenerator::sampleID, sample78);
+	instrument_zone3.set_sample(sampleSF2Pointer78);
+	instrument_zone3.SetGenerator(SFGeneratorItem(SFGenerator::kSampleID, sample78));
+	new_instrument.AddZone(instrument_zone3);
 
-	inst_map[inst] = cur_inst_index;
-	return cur_inst_index ++;
+	std::shared_ptr<SFInstrument> shared_instrument = std::make_shared<SFInstrument>(new_instrument);
+	sf2->AddInstrument(shared_instrument);
+	//inst_map[inst] = cur_inst_index;
+	inst_map[inst] = std::make_pair(cur_inst_index, shared_instrument);
+	//return cur_inst_index ++;
+	std::pair<int, std::shared_ptr<SFInstrument>> retPair;
+	retPair.first = cur_inst_index ++;
+	retPair.second = shared_instrument;
+	return retPair;
 }

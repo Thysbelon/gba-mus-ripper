@@ -57,6 +57,7 @@ public:
 	void add_new_preset_generator(SFGenerator operation, uint16_t value);
 	void add_new_preset_generator(SFGenerator operation, uint8_t lo, uint8_t hi);
 	void add_new_inst_modulator();
+	void add_new_inst_modulator(SFModulator modSource, SFModulator modSource2, SFGenerator modDest, uint16_t amount, SFTransform transCurve);
 	void add_new_inst_generator();
 	void add_new_inst_generator(SFGenerator operation, uint16_t value);
 	void add_new_inst_generator(SFGenerator operation, uint8_t lo, uint8_t hi);
