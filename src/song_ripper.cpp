@@ -8,7 +8,10 @@
 TODO: overhaul this to use cppmidi instead of midi.cpp (low priority); this will make it possible to replace undefined midi CCs with text events (for MP2K LFOs). Text events cannot be assigned to specific channels; they can be assigned to specific tracks, but only format 1 midis have tracks.
 The above is low priorty because I prefer to leave LFO events as undefined midi CCs because modulators in the sf2 can use the CCs as input to recreate LFO (though it will never be one-to-one with the GBA, because the GBA LFO effects speed up and slow down with the tempo).
 
-Study the output of the sv option and improve on it if neccessary.
+NOTE: The sv option seems to just send a single mod depth cc when the LFO type is pitch, and sends a single channel pressure command when the LFO type is anything else. it seems to only insert a single controller when the LFO starts.
+NOTE: the line "will insert controllers in real time to simulate a vibrato, instead of just when commands are given" probably refers to how if there is LFO delay, song_ripper will wait before inserting its single CC1 or channel pressure event.
+
+NOTE Oct 20 2024: LFO does affect GB PSG, but it affects it in a way that I don't think can be replicated by sf2 and midi (the techinical limits of PSG strongly affect the sound. For example, panpot LFO for most instruments will gradually slide left and right; but on PSG it only changes between hard left, hard right and completely center because those are the only stereo panning values the GB PSG can do). I'll still put the modulators in so the user can get an approximation.
 */
 #include "midi.hpp"
 #include <algorithm>
@@ -33,12 +36,14 @@ static bool end_flag = false;
 static bool loop_flag = false;
 static uint32_t loop_adr;
 
+/*
 static int lfo_delay_ctr[16];
 static int lfo_delay[16];
 static int lfo_depth[16];
 static int lfo_type[16];
 static bool lfo_flag[16];
 static int lfo_startup[16];
+*/
 
 static unsigned int simultaneous_notes_ctr = 0;
 static unsigned int simultaneous_notes_max = 0;
@@ -51,12 +56,12 @@ static bool rc = false;
 static bool gs = false;
 static bool xg = false;
 static bool lv = false;
-static bool sv = false;
+//static bool sv = false;
 
 static MIDI midi(24);
 static FILE *inGBA;
 
-static void process_event(int track);
+static void process_event(int track, int track_amnt);
 
 static void print_instructions()
 {
@@ -71,7 +76,7 @@ static void print_instructions()
 		"-gs : This will send a GS system exclusive message to tell the player channel 10 is not drums.\n"
 		"-xg : This will send a XG system exclusive message, and force banks number which will disable \"drums\".\n"
 		"-lv : Linearise volume and velocities. This should be used to have the output \"sound\" like the original song, but shouldn't be used to get an exact dump of sequence data."
-		"-sv : Simulate vibrato. This will insert controllers in real time to simulate a vibrato, instead of just when commands are given. Like -lv, this should be used to have the output \"sound\" like the original song, but shouldn't be used to get an exact dump of sequence data.\n\n"
+		"-sv : (Disabled) Simulate vibrato. This will insert controllers in real time to simulate a vibrato, instead of just when commands are given. Like -lv, this should be used to have the output \"sound\" like the original song, but shouldn't be used to get an exact dump of sequence data.\n\n"
 		"It is possible, but not recommended, to use more than one of these flags at a time.\n"
 	);
 	exit(0);
@@ -84,6 +89,7 @@ static void add_simultaneous_note()
 		simultaneous_notes_max = simultaneous_notes_ctr;
 }
 
+/*
 // LFO logic on tick
 static void process_lfo(int track)
 {
@@ -125,6 +131,7 @@ static void stop_lfo(int track)
 	else
 		lfo_delay_ctr[track] = 0;			// cancel delay counter if it wasn't playing
 }
+*/
 
 // Note class
 // this was needed to properly handle polyphony on all channels...
@@ -146,7 +153,7 @@ class Note
 		if (counter > 0 && --counter == 0)
 		{
 			midi.add_note_off(chn, key, vel);
-			stop_lfo(chn);
+			//stop_lfo(chn);
 			simultaneous_notes_ctr--;
 			return true;
 		}
@@ -163,7 +170,7 @@ public:
 	{
 		event_made = false;
 
-		start_lfo(chn);
+		//start_lfo(chn);
 		add_simultaneous_note();
 	}
 };
@@ -200,14 +207,16 @@ static bool tick(int track_amnt)
 			if (track == 0 && loop_flag && !return_flag[0] && !track_completed[0] && track_ptr[0] == loop_adr)
 				midi.add_marker("loopStart");
 
-			process_event(track);
+			process_event(track, track_amnt/*only used by one bit of code I added*/);
 		}
 	}
 
+	/*
 	for (int track = 0; track < track_amnt; track++)
 	{
 		process_lfo(track);
 	}
+	*/
 
 	// Compute if all still active channels are completely decoded
 	bool all_completed_flag = true;
@@ -233,8 +242,9 @@ static uint32_t get_GBA_pointer()
 	return p & 0x3FFFFFF;
 }
 
-static void process_event(int track)
+static void process_event(int track, int track_amnt)
 {
+	/*
 	auto updateStartupLFO = [&]()
 	{
 		if (lfo_startup[track] > 0)
@@ -255,7 +265,7 @@ static void process_event(int track)
 	{
 		updateStartupLFO();
 	}
-	
+	*/
 	
 	// Length table for notes and rests
 	const int lenTbl[] =
@@ -335,6 +345,10 @@ static void process_event(int track)
 		int tempo = 2 * fgetc(inGBA);
 		track_ptr[track]++;
 		midi.add_tempo(tempo);
+		// add cc 115 to all channels
+		for (int i = 0; i < track_amnt; i++){
+			midi.add_controller(i, 115, tempo / 4); // MP2K tempo change command is only on the first track, but midi and the sf2 modulators need this BPM-marking cc115 to be on all channels.
+		}
 		return;
 	}
 
@@ -350,7 +364,7 @@ static void process_event(int track)
 	// Note on with specified length command
 	if (command >= 0xd0)
 	{
-		updateStartupLFO();
+		//updateStartupLFO();
 		int key, vel, len_ofs = 0;
 		// Is arg1 a key value ?
 		if (arg1 < 0x80)
@@ -437,9 +451,11 @@ static void process_event(int track)
 
 		// Pitch bend range
 		case 0xc1:
+			/*
 			if (sv)
 				midi.add_RPN(track, 0, (char)arg1);
 			else
+			*/
 				//midi.add_controller(track, 20, arg1); 
 				// midi pitch bend range adjust. https://github.com/mmontag/chip-player-js/blob/master/scripts/fix-n64-midi.js#L238 https://www.recordingblogs.com/wiki/midi-registered-parameter-number-rpn .
 				// midi2agb is programmed to interpret these RPN events as BENDR commands.
@@ -448,22 +464,27 @@ static void process_event(int track)
 
 		// LFO Speed
 		case 0xc2:
+			/*
 			if (sv)
 				midi.add_NRPN(track, 136, (char)arg1);
 			else
+			*/
 				midi.add_controller(track, 21, arg1);
 			return;
 
 		// LFO delay
 		case 0xc3:
+			/*
 			if (sv)
 				lfo_delay[track] = arg1;
 			else
+			*/
 				midi.add_controller(track, 26, arg1);
 			return;
 
 		// LFO depth / MOD / Modulation depth
 		case 0xc4:
+			/*
 			if (sv)
 			{
 				if (counter[track] <= 0)
@@ -484,14 +505,17 @@ static void process_event(int track)
 				// So I made a terrible quick fix for it, in the mean time I can find something better to prevent it.
 			}
 			else
+			*/
 				midi.add_controller(track, 1, arg1);
 			return;
 
 		// LFO type / MODT / Modulation Type
 		case 0xc5:
+			/*
 			if (sv)
 				lfo_type[track] = arg1;
 			else
+			*/
 				//midi.add_controller(track, 22, arg1);
 				
 				// all ripped SF2s have modulators that imitate GBA pitch and vol LFO. Due to the limitations of SF2 modulators, I can't use just cc22 to change modulation type.
@@ -506,14 +530,15 @@ static void process_event(int track)
 					midi.add_controller(track, 111, 0); // DISABLE VOL
 				}
 				// The reason the ON and OFF values for cc110 Set-LFO-to-Pitch and cc111 Set-LFO-to-Volume are different is because pitch is the default LFO type in MP2K songs; if no LFO type has been defined yet, the player should default to pitch; when a midi CC hasn't been defined, it is zero; thus, to make pitch LFO the default on midi and sf2, 0 must mean ON for pitch LFO and OFF for vol LFO.
-				// With the next version of GBA_Mus_Ripper, I will release a fork of midi2agb has been altered to read these events as LFO type.
 			return;
 
 		// Detune
 		case 0xc8:
+			/*
 			if (sv)
 				midi.add_RPN(track, 1, (char)arg1);
 			else
+			*/
 				midi.add_controller(track, 24, arg1); // TODO: change this to a midi2agb-defined text event.
 				// insert both a midi fine tuning RPN *and* a midi cc 24. This is neccessary because the range of values for MP2K TUNE (0x00 - 0x40 - 0x7F) does not line up 1-to-1 with the range of values for the fine tuning RPN (0x0000 - 0x2000 - 0x3FFF). For example, the expression (0x40 / 0x7F)*0x3FFF equals 0x2040, but 0x40 is normal pitch for mp2k and 0x2000 is normal pitch for RPN.
 				// This shouldn't adversely affect midi2agb, because that program ignores all RPN events other than pitch bend range changes.
@@ -540,7 +565,7 @@ static void process_event(int track)
 			}
 
 			midi.add_note_off(track, key + key_shift[track], vel);
-			stop_lfo(track);
+			//stop_lfo(track);
 			simultaneous_notes_ctr --;
 		}	return;
 
@@ -616,8 +641,8 @@ static uint32_t parseArguments(const int argv, const char *const args[])
 				xg = true;
 			else if (args[i][1] == 'l' && args[i][2] == 'v')
 				lv = true;
-			else if (args[i][1] == 's' && args[i][2] == 'v')
-				sv = true;
+			//else if (args[i][1] == 's' && args[i][2] == 'v')
+			//	sv = true;
 			else
 				print_instructions();
 		}
@@ -705,9 +730,11 @@ int main(int argc, char *argv[])
 	{
 		track_ptr[i] = get_GBA_pointer();
 
+		/*
 		lfo_depth[i] = 0;
 		lfo_delay[i] = 0;
 		lfo_flag[i] = false;
+		*/
 
 		if (reverb < 0)  // add reverb controller on all tracks
 			midi.add_controller(i, 91, lv ? (int)sqrt((reverb & 0x7f) * 127.0) : reverb & 0x7f);

@@ -292,7 +292,7 @@ int main(int argc, char *const argv[])
 		for (bank_t j = sound_bank_list.begin(); j != sound_bank_list.end(); ++j)
 		{
 			unsigned int d = std::distance(sound_bank_list.begin(), j);
-			std::string subdir = outPath + '/' + "soundbank_" + dec4(d);
+			std::string subdir = outPath + '/' + "soundbank_" + dec4(d); // when going through the sound table, a song that uses sound group 4 could appear before a song that uses sound group 2. GBA_Mus_Ripper always gets the correct sound bank number because C++ sets automatically order their elements from smallest to largest; sound bank 2 should have a smaller pointer value than sound bank 4, so it will be in the correct order in a set.
 			mkdir(subdir);
 		}
 	}

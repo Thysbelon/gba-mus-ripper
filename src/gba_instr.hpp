@@ -36,6 +36,7 @@ class GBAInstr
 	SoundFont *sf2; //SF2 *sf2;										// Related .sf2 file
 	GBASamples samples;								// Related samples class
 
+	void addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zone);
 	// Convert pointer from GBA memory map to ROM memory map
 	uint32_t get_GBA_pointer();
 	// Apply ADSR envelope on the instrument

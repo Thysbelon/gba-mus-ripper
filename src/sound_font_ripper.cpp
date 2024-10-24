@@ -6,7 +6,7 @@
  * Nintendo's "Sappy" engine (which ~90% of commercial GBA games are using),
  * and converts it to the widely used SF2 Sound Font format.
  */
-// TODO: Add modulators to each sf2 instrument to mimic MP2K LFO. This will require altering sf2.cpp to add the ability to set modulators. (gba_instr.cpp)
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
@@ -102,7 +102,7 @@ static void add_attenuation_preset(SFPresetZone* preset_zone)
 
 // Convert a GBA instrument in its SF2 counterpart
 // if any kind of error happens, it will do nothing and exit
-static void build_instrument(const inst_data inst) // TODO: add modulators at build_sampled_instrument in gba_instr.cpp.
+static void build_instrument(const inst_data inst)
 {
 	uint8_t instr_type = inst.word0 & 0xff;
 	std::string name;
@@ -626,7 +626,7 @@ int main(const int argc, char *const argv[])
 {
 	puts("GBA ROM sound font ripper (c) 2012 Bregalad");
 
-	puts("parsing args...");
+	//puts("parsing args...");
 	// Parse arguments without the program name
 	parse_arguments(argc-1, argv+1);
 
@@ -636,9 +636,9 @@ int main(const int argc, char *const argv[])
 
 	// Create SF2 class
 	//sf2 = new SF2(sample_rate);
-	puts("setting sound_engine...");
+	//puts("setting sound_engine...");
 	sf2->set_sound_engine("EMU8000");
-	puts("sound engine set");
+	//puts("sound engine set");
 	instruments = new GBAInstr(sf2, sample_rate); // TEST sample_rate
 	
 	// TODO: look for data files in ../data/, /data/, and .
@@ -709,9 +709,9 @@ int main(const int argc, char *const argv[])
 	printf("Dump complete, now outputting SF2 data...\n");
 
 	std::ofstream outSF2(out_path, std::ios::binary);
-	puts("sf2->Write...");
+	//puts("sf2->Write...");
 	sf2->Write(outSF2);
-	puts("sf2->Write complete");
+	//puts("sf2->Write complete");
 	delete instruments;
 	//puts("deleting sf2...");
 	//delete sf2;
