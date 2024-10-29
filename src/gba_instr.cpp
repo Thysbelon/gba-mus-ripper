@@ -68,7 +68,7 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
 			SFControllerType::kConvex),
 		SFGenerator::kFreqVibLFO,
-		9500,
+		9572,
 		SFModulator(0),
 		SFTransform::kLinear));
 	global_instrument_zone->SetModulator(SFModulatorItem(
@@ -76,7 +76,7 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
 			SFControllerType::kConcave),
 		SFGenerator::kFreqVibLFO,
-		-11500,
+		-10793,
 		SFModulator(0),
 		SFTransform::kLinear));
 	global_instrument_zone->SetModulator(SFModulatorItem(
@@ -84,7 +84,7 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
 			SFControllerType::kSwitch),
 		SFGenerator::kFreqVibLFO,
-		-5300,
+		-4887,
 		SFModulator(0),
 		SFTransform::kLinear));
 
@@ -104,7 +104,7 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
 			SFControllerType::kConvex),
 		SFGenerator::kFreqModLFO,
-		9500,
+		9572,
 		SFModulator(0),
 		SFTransform::kLinear));
 	global_instrument_zone->SetModulator(SFModulatorItem(
@@ -112,7 +112,7 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
 			SFControllerType::kConcave),
 		SFGenerator::kFreqModLFO,
-		-11500,
+		-10793,
 		SFModulator(0),
 		SFTransform::kLinear));
 	global_instrument_zone->SetModulator(SFModulatorItem(
@@ -120,7 +120,7 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
 			SFControllerType::kSwitch),
 		SFGenerator::kFreqModLFO,
-		-5300,
+		-4887, // optimized for 35 LFO and 116 BPM
 		SFModulator(0),
 		SFTransform::kLinear));
 

@@ -347,7 +347,7 @@ static void process_event(int track, int track_amnt)
 		midi.add_tempo(tempo);
 		// add cc 115 to all channels
 		for (int i = 0; i < track_amnt; i++){
-			midi.add_controller(i, 115, tempo / 4); // MP2K tempo change command is only on the first track, but midi and the sf2 modulators need this BPM-marking cc115 to be on all channels.
+			midi.add_controller(i, 115, (int)round((float)tempo / 4)); // MP2K tempo change command is only on the first track, but midi and the sf2 modulators need this BPM-marking cc115 to be on all channels.
 		}
 		return;
 	}
