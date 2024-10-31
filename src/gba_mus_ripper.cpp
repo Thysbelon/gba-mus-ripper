@@ -12,6 +12,7 @@
 TODO: 
 - add the option to do a dry run (run the program with command line output, but without writing any files.)
 - bundle Kermalis's VG Music Studio's MP2K.yaml with gba_mus_ripper (likely in the data directory) and have gba_mus_ripper use it as a fallback when sappy_detector can't detect the song table. OR, maybe sappy_detector could use MP2K.yaml as a fallback.
+- https://gsf.caitsith2.net/ofslist.txt . https://github.com/loveemu/loveemu-lab/tree/master/gba/mp2ktool/mp2ktool .
 */
 #include <stdlib.h>
 #include <stdint.h>
@@ -188,7 +189,10 @@ int main(int argc, char *const argv[])
 #endif
 
 		// Exit if no sappy engine was found
-		if (!sound_engine_adr) exit(0); // TODO put specific error message here.
+		if (!sound_engine_adr) {
+			fprintf(stderr, "Error: no MP2K engine was found.\n");
+			exit(0);
+		}
 
 		if (fseek(inGBA, sound_engine_adr, SEEK_SET))
 		{

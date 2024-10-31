@@ -6,7 +6,7 @@
  */
 /* 
 TODO: overhaul this to use cppmidi instead of midi.cpp (low priority); this will make it possible to replace undefined midi CCs with text events (for MP2K LFOs). Text events cannot be assigned to specific channels; they can be assigned to specific tracks, but only format 1 midis have tracks.
-The above is low priorty because I prefer to leave LFO events as undefined midi CCs because modulators in the sf2 can use the CCs as input to recreate LFO (though it will never be one-to-one with the GBA, because the GBA LFO effects speed up and slow down with the tempo).
+The above is low priorty because I prefer to leave most LFO events as undefined midi CCs because modulators in the sf2 can use the CCs as input to recreate LFO.
 
 NOTE: The sv option seems to just send a single mod depth cc when the LFO type is pitch, and sends a single channel pressure command when the LFO type is anything else. it seems to only insert a single controller when the LFO starts.
 NOTE: the line "will insert controllers in real time to simulate a vibrato, instead of just when commands are given" probably refers to how if there is LFO delay, song_ripper will wait before inserting its single CC1 or channel pressure event.

@@ -184,7 +184,7 @@ static void build_instrument(const inst_data inst)
 				sf2->AddPreset(shared_preset);
 			}	break;
 
-			// GameBoy noise instruments, not supported yet // TODO: see if this is still true and rewrite comment if necessary
+			// GameBoy noise instruments
 			case 0x04:
 			case 0x0c:
 			{
@@ -641,16 +641,31 @@ int main(const int argc, char *const argv[])
 	//puts("sound engine set");
 	instruments = new GBAInstr(sf2, sample_rate); // TEST sample_rate
 	
-	// TODO: look for data files in ../data/, /data/, and .
 	// Attempt to access psg_data file
-	psg_data = fopen((prg_prefix + "../data/psg_data.raw").c_str(), "rb");
-	if (!psg_data)
-		puts("psg_data.raw file not found! PSG Instruments can't be dumped.");
-
+	psg_data = fopen((prg_prefix + "./psg_data.raw").c_str(), "rb");
+	if (!psg_data) {
+		print("psg_data.raw file not found in \".\", looking in \"/data\"...\n");
+		psg_data = fopen((prg_prefix + "/data/psg_data.raw").c_str(), "rb");
+		if (!psg_data) {
+			print("psg_data.raw file not found in \"/data\", looking in \"../data\"...\n");
+			psg_data = fopen((prg_prefix + "../data/psg_data.raw").c_str(), "rb");
+			if (!psg_data)
+				puts("psg_data.raw file not found! PSG Instruments can't be dumped.");
+		}
+	}
+		
 	// Attempt to access goldensun_synth file
-	goldensun_synth = fopen((prg_prefix + "../data/goldensun_synth.raw").c_str(), "rb");
-	if (!goldensun_synth)
-		puts("goldensun_synth.raw file not found! Golden Sun's synth instruments can't be dumped.");
+	goldensun_synth = fopen((prg_prefix + "./goldensun_synth.raw").c_str(), "rb");
+	if (!goldensun_synth) {
+		print("goldensun_synth.raw file not found in \".\", looking in \"/data\"...\n");
+		goldensun_synth = fopen((prg_prefix + "/data/goldensun_synth.raw").c_str(), "rb");
+		if (!goldensun_synth) {
+			print("goldensun_synth.raw file not found in \"/data\", looking in \"../data\"...\n");
+			goldensun_synth = fopen((prg_prefix + "../data/goldensun_synth.raw").c_str(), "rb");
+			if (!goldensun_synth)
+				puts("goldensun_synth.raw file not found! Golden Sun's synth instruments can't be dumped.");
+		}
+	}
 
 	// Read instrument data from input GBA file
 	inst_data *instr_data = new inst_data[128];

@@ -17,12 +17,31 @@
 extern FILE *inGBA;					// Related .gba file
 
 void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zone){
+	SFModulator modDepthIncUniLinMod(SFMidiController::kModulationDepth,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kLinear);
+	SFModulator cc21IncUniConvMod(SFMidiController::kController21,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kConvex);
+	SFModulator cc115DecUniConcMod(SFMidiController::kController115,
+			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kConcave)
+	SFModulator cc116DecUniSwiMod(SFMidiController::kController116,
+			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kSwitch)
+	SFModulator cc26IncUniConvMod(SFMidiController::kController26,
+			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+			SFControllerType::kConvex)
+	
+	int LFOspeedLFOSamount = 9572;
+	int LFOspeedBPMamount = -10793;
+	int LFOspeedAdjustAmount = -4887; // optimized for 35 LFO and 116 BPM
+	int LFOdelayAmount = 15000;
+	
 	// override the default pitch modulator for CC1 to prevent unnecessary vibrato where the original song had panpot or volume modulation. https://www.mail-archive.com/fluid-dev@nongnu.org/msg05330.html
 	// disable default modDepth2VibLFOpitch modulator
 	global_instrument_zone->SetModulator(SFModulatorItem(
-			SFModulator(SFMidiController::kModulationDepth,
-			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kLinear),
+			modDepthIncUniLinMod,
 		SFGenerator::kVibLfoToPitch,
 		0,
 		SFModulator(0),
@@ -30,9 +49,7 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 
 	// GBA modDepth2VibLFOpitch modulator that only activates when CC110 is 0
 	global_instrument_zone->SetModulator(SFModulatorItem(
-			SFModulator(SFMidiController::kModulationDepth,
-			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kLinear),
+			modDepthIncUniLinMod,
 		SFGenerator::kVibLfoToPitch,
 		50,
 		SFModulator(SFMidiController::kController110,
@@ -42,9 +59,7 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 
 	// GBA modDepth2ModLFOvol modulator that only activates when CC111 is 127
 	global_instrument_zone->SetModulator(SFModulatorItem(
-			SFModulator(SFMidiController::kModulationDepth,
-			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kLinear),
+			modDepthIncUniLinMod,
 		SFGenerator::kModLfoToVolume,
 		300,
 		SFModulator(SFMidiController::kController111,
@@ -53,94 +68,58 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 		SFTransform::kLinear));
 
 	// GBA mod-speed modulator vib
-	/*
 	global_instrument_zone->SetModulator(SFModulatorItem(
-			SFModulator(SFMidiController::kController21,
-			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kLinear),
+			cc21IncUniConvMod,
 		SFGenerator::kFreqVibLFO,
-		2000,
-		SFModulator(0),
-		SFTransform::kLinear));
-	*/
-	global_instrument_zone->SetModulator(SFModulatorItem(
-			SFModulator(SFMidiController::kController21,
-			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kConvex),
-		SFGenerator::kFreqVibLFO,
-		9572,
+		LFOspeedLFOSamount,
 		SFModulator(0),
 		SFTransform::kLinear));
 	global_instrument_zone->SetModulator(SFModulatorItem(
-			SFModulator(SFMidiController::kController115,
-			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kConcave),
+			cc115DecUniConcMod,
 		SFGenerator::kFreqVibLFO,
-		-10793,
+		LFOspeedBPMamount,
 		SFModulator(0),
 		SFTransform::kLinear));
 	global_instrument_zone->SetModulator(SFModulatorItem(
-			SFModulator(SFMidiController::kController116,
-			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kSwitch),
+			cc116DecUniSwiMod,
 		SFGenerator::kFreqVibLFO,
-		-4887,
+		LFOspeedAdjustAmount,
 		SFModulator(0),
 		SFTransform::kLinear));
 
 	// GBA mod-speed modulator mod
-	/*
 	global_instrument_zone->SetModulator(SFModulatorItem(
-			SFModulator(SFMidiController::kController21,
-			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kLinear),
+			cc21IncUniConvMod,
 		SFGenerator::kFreqModLFO,
-		2000,
-		SFModulator(0),
-		SFTransform::kLinear));
-	*/
-	global_instrument_zone->SetModulator(SFModulatorItem(
-			SFModulator(SFMidiController::kController21,
-			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kConvex),
-		SFGenerator::kFreqModLFO,
-		9572,
+		LFOspeedLFOSamount,
 		SFModulator(0),
 		SFTransform::kLinear));
 	global_instrument_zone->SetModulator(SFModulatorItem(
-			SFModulator(SFMidiController::kController115,
-			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kConcave),
+			cc115DecUniConcMod,
 		SFGenerator::kFreqModLFO,
-		-10793,
+		LFOspeedBPMamount,
 		SFModulator(0),
 		SFTransform::kLinear));
 	global_instrument_zone->SetModulator(SFModulatorItem(
-			SFModulator(SFMidiController::kController116,
-			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kSwitch),
+			cc116DecUniSwiMod,
 		SFGenerator::kFreqModLFO,
-		-4887, // optimized for 35 LFO and 116 BPM
+		LFOspeedAdjustAmount,
 		SFModulator(0),
 		SFTransform::kLinear));
 
 	// GBA mod-delay modulator vib // TODO: analyze MP2K LFO delay to make this more accurate
 	global_instrument_zone->SetModulator(SFModulatorItem(
-			SFModulator(SFMidiController::kController26,
-			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kConvex),
+			cc26IncUniConvMod,
 		SFGenerator::kDelayVibLFO,
-		15000,
+		LFOdelayAmount,
 		SFModulator(0),
 		SFTransform::kLinear));
 
 	// GBA mod-delay modulator mod
 	global_instrument_zone->SetModulator(SFModulatorItem(
-			SFModulator(SFMidiController::kController26,
-			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kConvex),
+			cc26IncUniConvMod,
 		SFGenerator::kDelayModLFO,
-		15000,
+		LFOdelayAmount,
 		SFModulator(0),
 		SFTransform::kLinear));
 }
