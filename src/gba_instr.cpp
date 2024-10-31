@@ -25,13 +25,13 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 			SFControllerType::kConvex);
 	SFModulator cc115DecUniConcMod(SFMidiController::kController115,
 			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kConcave)
+			SFControllerType::kConcave);
 	SFModulator cc116DecUniSwiMod(SFMidiController::kController116,
 			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kSwitch)
+			SFControllerType::kSwitch);
 	SFModulator cc26IncUniConvMod(SFMidiController::kController26,
 			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
-			SFControllerType::kConvex)
+			SFControllerType::kConvex);
 	
 	int LFOspeedLFOSamount = 9572;
 	int LFOspeedBPMamount = -10793;
@@ -47,10 +47,10 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 		SFModulator(0),
 		SFTransform::kLinear));
 
-	// GBA modDepth2VibLFOpitch modulator that only activates when CC110 is 0
+	// GBA modDepth2ModLFOpitch modulator that only activates when CC110 is 0
 	global_instrument_zone->SetModulator(SFModulatorItem(
 			modDepthIncUniLinMod,
-		SFGenerator::kVibLfoToPitch,
+		SFGenerator::kModLfoToPitch,
 		50,
 		SFModulator(SFMidiController::kController110,
 			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
@@ -65,26 +65,6 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 		SFModulator(SFMidiController::kController111,
 			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
 			SFControllerType::kSwitch),
-		SFTransform::kLinear));
-
-	// GBA mod-speed modulator vib
-	global_instrument_zone->SetModulator(SFModulatorItem(
-			cc21IncUniConvMod,
-		SFGenerator::kFreqVibLFO,
-		LFOspeedLFOSamount,
-		SFModulator(0),
-		SFTransform::kLinear));
-	global_instrument_zone->SetModulator(SFModulatorItem(
-			cc115DecUniConcMod,
-		SFGenerator::kFreqVibLFO,
-		LFOspeedBPMamount,
-		SFModulator(0),
-		SFTransform::kLinear));
-	global_instrument_zone->SetModulator(SFModulatorItem(
-			cc116DecUniSwiMod,
-		SFGenerator::kFreqVibLFO,
-		LFOspeedAdjustAmount,
-		SFModulator(0),
 		SFTransform::kLinear));
 
 	// GBA mod-speed modulator mod
@@ -107,15 +87,7 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 		SFModulator(0),
 		SFTransform::kLinear));
 
-	// GBA mod-delay modulator vib // TODO: analyze MP2K LFO delay to make this more accurate
-	global_instrument_zone->SetModulator(SFModulatorItem(
-			cc26IncUniConvMod,
-		SFGenerator::kDelayVibLFO,
-		LFOdelayAmount,
-		SFModulator(0),
-		SFTransform::kLinear));
-
-	// GBA mod-delay modulator mod
+	// GBA mod-delay modulator mod // TODO: analyze MP2K LFO delay to make this more accurate
 	global_instrument_zone->SetModulator(SFModulatorItem(
 			cc26IncUniConvMod,
 		SFGenerator::kDelayModLFO,
@@ -279,7 +251,7 @@ std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_sampled_instrument
 	instrument_zone.set_sample(sampleSF2Pointer);
 	instrument_zone.SetGenerator(SFGeneratorItem(SFGenerator::kSampleID, sample_index)); // Instead of creating the instrument with the sample, the instrument is created empty then the sampleID is set afterwards. (the sample has already been added to the soundfont). *However*, this doesn't work with sf2cute because it requires passing pointers. sf2.cpp probably also did pointer stuff internally.
 	
-	// set various modulators to more accurately match GBA output. TODO: make these -raw only? TODO: research which instrument types use LFO
+	// set various modulators to more accurately match GBA output. TODO: make these -raw only?
 	SFInstrumentZone global_instrument_zone;
 	addModulatorsToGlobalZone(&global_instrument_zone);
 	new_instrument.set_global_zone(global_instrument_zone);
@@ -578,7 +550,7 @@ std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_keysplit_instrumen
 }
 
 // Build gameboy channel 3 instrument
-std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_GB3_instrument(const inst_data inst) // TODO: does this use LFO?
+std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_GB3_instrument(const inst_data inst)
 {
 	// Do nothing if this instrument already exists !
 	inst_it it = inst_map.find(inst);
@@ -665,7 +637,7 @@ std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_GB3_instrument(con
 }
 
 // Build GameBoy pulse wave instrument
-std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_pulse_instrument(const inst_data inst) // TODO: does this use LFO?
+std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_pulse_instrument(const inst_data inst)
 {
 	// Do nothing if this instrument already exists !
 	inst_it it = inst_map.find(inst);
@@ -734,7 +706,7 @@ std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_pulse_instrument(c
 }
 
 // Build GameBoy white noise instrument
-std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_noise_instrument(const inst_data inst) // TODO: does this use LFO?
+std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_noise_instrument(const inst_data inst)
 {
 	// Do nothing if this instrument already exists !
 	inst_it it = inst_map.find(inst);
