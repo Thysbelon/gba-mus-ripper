@@ -3,7 +3,8 @@
 #CC=x86_64-w64-mingw32-gcc.exe -std=c99
 
 # GNU/Linux
-CPPC=/usr/bin/g++ -std=gnu++11 # sf2cute requires C++14, but leaving this as gnu++11 doesn't seem to cause any errors for now
+CPPC=/usr/bin/g++ -std=gnu++11
+CPPC2=/usr/bin/g++ -std=c++17
 CC=/usr/bin/gcc -std=c99
 CMAKE=/usr/bin/cmake
 MAKE=/usr/bin/make
@@ -15,10 +16,10 @@ WHOLE=-s -fwhole-program -static
 
 SF2CUTE_SRC_FILES = src/sf2cute/src/sf2cute/$(wildcard *.cpp) # TODO include *.hpp files too?
 
-all: $(shell mkdir build) $(shell mkdir bin) bin/sappy_detector bin/song_ripper bin/sound_font_ripper bin/gba_mus_ripper
+all: $(shell mkdir build) $(shell mkdir bin) bin/mp2ktools bin/song_ripper bin/sound_font_ripper bin/gba_mus_ripper
 
-bin/sappy_detector: src/sappy_detector.c
-	$(CC) $(FLAGS) $(WHOLE) src/sappy_detector.c -o bin/sappy_detector
+bin/mp2ktools: src/mp2ktool/mp2ktool.cpp src/mp2ktool/mp2kcomm.cpp src/mp2ktool/agbm4a.cpp src/mp2ktool/mp2kcomm.h src/mp2ktool/agbm4a.h
+	$(CPPC2) src/mp2ktool/mp2ktool.cpp src/mp2ktool/mp2kcomm.cpp src/mp2ktool/agbm4a.cpp -o bin/mp2ktool
 
 bin/song_ripper: src/song_ripper.cpp src/midi.hpp build/midi.o
 	$(CPPC) $(FLAGS) $(WHOLE) src/song_ripper.cpp build/midi.o -o bin/song_ripper
@@ -44,6 +45,7 @@ build/sound_font_ripper.o: src/sound_font_ripper.cpp src/gba_instr.hpp src/hex_s
 src/sf2cute/build/libsf2cute.a: $(SF2CUTE_SRC_FILES)
 	$(CMAKE) -S src/sf2cute -B src/sf2cute/build
 	$(MAKE) --directory=src/sf2cute/build
+
 clean:
 	rm -f *.o *.s *.i *.ii
 	rm -rf build/

@@ -11,8 +11,6 @@
 /* 
 TODO: 
 - add the option to do a dry run (run the program with command line output, but without writing any files.)
-- bundle Kermalis's VG Music Studio's MP2K.yaml with gba_mus_ripper (likely in the data directory) and have gba_mus_ripper use it as a fallback when sappy_detector can't detect the song table. OR, maybe sappy_detector could use MP2K.yaml as a fallback.
-- https://gsf.caitsith2.net/ofslist.txt . https://github.com/loveemu/loveemu-lab/tree/master/gba/mp2ktool/mp2ktool .
 */
 #include <stdlib.h>
 #include <stdint.h>
@@ -20,13 +18,15 @@ TODO:
 #include <vector>
 #include <set>
 #include "hex_string.hpp"
+#include <stdio.h> // popen
+#include <string> // stoul
 
-#ifndef WIN32
-namespace sappy_detector
-{
-    #include "sappy_detector.c"             // The main::function is called directly on Linux
-}
-#endif
+//#ifndef WIN32
+//namespace sappy_detector
+//{
+//    #include "sappy_detector.c"             // The main::function is called directly on Linux
+//}
+//#endif
 
 static FILE *inGBA;
 static std::string inGBA_path;
@@ -85,6 +85,23 @@ static std::string dec4(unsigned int n)
 	s += "0123456789"[n / 10 % 10];
 	s += "0123456789"[n % 10];
 	return s;
+}
+
+static uint32_t getSoundTable(std::string prg_prefix, std::string inGBA_path){ // https://stackoverflow.com/questions/125828/capturing-stdout-from-a-system-command-optimally
+	std::string mp2ktoolCmd = prg_prefix + "mp2ktool songtable \"" + inGBA_path + "\"";
+	printf("DEBUG: going to call popen(%s)\n", mp2ktoolCmd.c_str());
+	FILE *mp2ktoolFile = popen(mp2ktoolCmd.c_str(), "r");
+
+	if (!mp2ktoolFile){
+		return 0;
+	}
+
+	char buffer[1024];
+	char *line = fgets(buffer, sizeof(buffer), mp2ktoolFile);
+	uint32_t x = std::stoul(line, nullptr, 16); // https://stackoverflow.com/questions/1070497/c-convert-hex-string-to-signed-integer
+	printf("result: 0x%08x\n", x); // https://stackoverflow.com/questions/14733761/printf-formatting-for-hexadecimal
+	pclose(mp2ktoolFile);
+	return x;
 }
 
 static void parse_args(const int argc, char *const args[])
@@ -176,43 +193,49 @@ int main(int argc, char *const argv[])
 	// If the user hasn't provided an address manually, we'll try to automatically detect it
 	if (!song_tbl_ptr)
 	{
+		song_tbl_ptr = getSoundTable(prg_prefix, inGBA_path);
+		if (!song_tbl_ptr) {
+			fprintf(stderr, "Error: no MP2K song table was found.\n");
+			exit(0);
+		}
+		
 		// Auto-detect address of sappy engine
-#ifdef WIN32
-		// On windows, just use the 32-bit return code of the sappy_detector executable
-		std::string sappy_detector_cmd = "\"\"" + prg_prefix + "sappy_detector\" \"" + inGBA_path + "\"\""; // https://stackoverflow.com/questions/27975969/how-to-run-an-executable-with-spaces-using-stdsystem-on-windows
-		printf("DEBUG: Going to call system(%s)\n", sappy_detector_cmd.c_str());
-		int sound_engine_adr = std::system(sappy_detector_cmd.c_str());
-#else
-		// On linux the function is duplicated in this executable
-		const char *sappy_detector_argv1 = inGBA_path.c_str();
-		int sound_engine_adr = sappy_detector::main(2, &sappy_detector_argv1 - 1);
-#endif
+//#ifdef WIN32
+//		// On windows, just use the 32-bit return code of the sappy_detector executable
+//		std::string sappy_detector_cmd = "\"\"" + prg_prefix + "sappy_detector\" \"" + inGBA_path + "\"\""; // https://stackoverflow.com/questions/27975969/how-to-run-an-executable-with-spaces-using-stdsystem-on-windows
+//		printf("DEBUG: Going to call system(%s)\n", sappy_detector_cmd.c_str());
+//		int sound_engine_adr = std::system(sappy_detector_cmd.c_str());
+//#else
+//		// On linux the function is duplicated in this executable
+//		const char *sappy_detector_argv1 = inGBA_path.c_str();
+//		int sound_engine_adr = sappy_detector::main(2, &sappy_detector_argv1 - 1);
+//#endif
 
-		// Exit if no sappy engine was found
-		if (!sound_engine_adr) {
-			fprintf(stderr, "Error: no MP2K engine was found.\n");
-			exit(0);
-		}
-
-		if (fseek(inGBA, sound_engine_adr, SEEK_SET))
-		{
-			fprintf(stderr, "Error: Invalid offset within input GBA file: 0x%x\n", sound_engine_adr);
-			exit(0);
-		}
-
-		// Engine parameter's word
-		uint32_t parameter_word;
-		fread(&parameter_word, 4, 1, inGBA);
-
-		// Get sampling rate
-		sample_rate = sample_rates[(parameter_word >> 16) & 0xf];
-		main_volume = (parameter_word >> 12) & 0xf;
-
-		// Compute address of song table
-		uint32_t song_levels;			// Read # of song levels
-		fread(&song_levels, 4, 1, inGBA);
-		printf("# of song levels: %d\n", song_levels);
-		song_tbl_ptr = get_GBA_pointer() + 12 * song_levels;
+		//// Exit if no sappy engine was found
+		//if (!sound_engine_adr) {
+		//	fprintf(stderr, "Error: no MP2K engine was found.\n");
+		//	exit(0);
+		//}
+    //
+		//if (fseek(inGBA, sound_engine_adr, SEEK_SET))
+		//{
+		//	fprintf(stderr, "Error: Invalid offset within input GBA file: 0x%x\n", sound_engine_adr);
+		//	exit(0);
+		//}
+    //
+		//// Engine parameter's word
+		//uint32_t parameter_word;
+		//fread(&parameter_word, 4, 1, inGBA);
+    //
+		//// Get sampling rate
+		//sample_rate = sample_rates[(parameter_word >> 16) & 0xf];
+		//main_volume = (parameter_word >> 12) & 0xf;
+    //
+		//// Compute address of song table
+		//uint32_t song_levels;			// Read # of song levels
+		//fread(&song_levels, 4, 1, inGBA);
+		//printf("# of song levels: %d\n", song_levels);
+		//song_tbl_ptr = get_GBA_pointer() + 12 * song_levels;
 	}
 
 	// Create a directory named like the input ROM, without the .gba extension
