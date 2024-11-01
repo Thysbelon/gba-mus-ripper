@@ -1,1 +1,1 @@
-emcc fluidsynth-modulator-test.c -o fluidsynth-modulator-test.js -lm -sEXPORTED_RUNTIME_METHODS=ccall,cwrap -sMODULARIZE -s 'EXPORT_NAME="fluidsynthModCalc"'
+emcc -O3 fluidsynth-modulator-test.c -o fluidsynth-modulator-test.js -lm -sEXPORTED_RUNTIME_METHODS=ccall,cwrap -sMODULARIZE -s 'EXPORT_NAME="fluidsynthModCalc"'
