@@ -344,7 +344,7 @@ int main(int argc, char *const argv[])
 			seq_rip_cmd += rc ? " -rc" : (xg ? " -xg": " -gs");
 			if (!raw)
 			{
-				seq_rip_cmd += " -sv";
+				//seq_rip_cmd += " -sv";
 				seq_rip_cmd += " -lv";
 			}
 			// Bank number, if banks are not separated
