@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<head>
+<meta name=color-scheme content="dark light">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+<script src="fluidsynth-modulator-test.js"></script>
+</head>
+<body style=max-width:43em;margin-left:auto;margin-right:auto>
+  <p>Blue is GBA, green is SF2. "distance" is the distance between the y-values of the first point and the last point.</p>
+  <p><label for="BPM">BPM (1-510):</label><input type="number" id="BPM" min="1" max="510" value="116" />
+  <p><label for="LFOS">LFOS (1-127):</label><input type="number" id="LFOS" min="1" max="127" value="35" />
+  <p><label for="SF2numOrHertz">Display as SF2 number or hertz:</label><select id="SF2numOrHertz"><option>SF2 Number</option><option>Hertz</option></select>
+<div>
+  <div style=float:left;width:80%>
+  <canvas id="myChart" style="width:100%;max-width:600px;background-color:white"></canvas>
+  </div>
+  <div id=chart1Anno style=float:right;width:19%>fsdfs</div>
+</div>
+<div>
+  <div style=float:left;width:80%>
+  <canvas id="myChart2" style="width:100%;max-width:600px;background-color:white"></canvas>
+  </div>
+    <div id=chart2Anno style=float:right;width:19%;height:100%;position:relative;bottom:0px>fsdfs</div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+var fluidsynthModCalcObj, fluidsynthModCalcFunc;
+
+
+
+function diff( x, y ) { // https://stackoverflow.com/a/65091555/20697953
+
+    if ( Math.sign( x ) === Math.sign( y ) ) {
+
+        return Math.abs( x - y );
+
+    } else {
+
+        return Math.abs( x ) + Math.abs( y );
+
+    };
+
+};
+
+const SF2numHertzElem = document.getElementById('SF2numOrHertz')
+const LFOSelem = document.getElementById('LFOS')
+const BPMelem = document.getElementById('BPM');
+var simulateModulator=function(){};
+
+(async () => {
+
+//const convertSF2numToHertz=true;
+
+
+var fluidsynthModCalcObj = await fluidsynthModCalc(); // main needs to be an EMSCRIPTEN_KEEPALIVE function that is called using cwrap in order to get the return value.
+	var fluidsynthModCalcFunc = fluidsynthModCalcObj.cwrap('myConvert', 'number', ['number', 'number', 'number'])
+	//console.log( fluidsynthModCalcFunc(35, 8) )
+	
+	simulateModulator = async function (BPM /*0-510*/, cc21LFOS /*0-127*/){
+	// 35 LFOS. 116 BPM
+	var num1 = await fluidsynthModCalcFunc(cc21LFOS, 8, 9572);
+	var num2 = await fluidsynthModCalcFunc(Math.round(BPM / 4), 5, -10793);
+	var num3 = await fluidsynthModCalcFunc(0, 13, -4887); // helper cc that the composer must always leave at 0
+	
+	// 1 LFOS. 1 BPM
+	//var num1 = await fluidsynthModCalcFunc(cc21LFOS, 8, 9572);
+	//var num2 = await fluidsynthModCalcFunc(Math.round(BPM / 4), 5, -10793);
+	//var num3 = await fluidsynthModCalcFunc(0, 13, -5224);
+	
+	return num1+num2+num3
+
+  //const cc116=0; // helper cc that the composer must always leave at 0
+  //// convert input bpm to cc range (0-127)
+  //var bpmCCrange = BPM / 4 // divide by 2 twice. This division is done in song_ripper
+  //// convert cc to a value between 0-1, or 1-0
+  //// 127 is the max val of a cc, but fluidsynth divides by 128 (so 64 can be the middle value)
+  //var cc21Limited = cc21LFOS / 128 // 0 to 1
+  //var cc115Limited= 1 - (bpmCCrange / 128); // 1 to 0 
+  //var cc116Limited = cc116==0 ? 1 : 0 // also applying switch curve here
+  //// apply curve
+  //var cc21curve = Math.sqrt(1 - Math.pow(cc21Limited - 1, 2)); // Math.sqrt(1 - (cc21Limited - 1)^2); the carat is broken for some reason so Math.pow needs to be used // https://easings.net/#easeOutCirc
+  //var cc115curve = 1 - Math.sqrt(1 - Math.pow(cc115Limited, 2)); // ease in
+  //const mod1finalMultiplier= 9587 
+  //const mod2finalMultiplier= -11516
+  ////const mod3finalMultiplier= -5244 //optimized for 1 LFO & 1 BPM (1.6 hertz at 116 BPM and 35 LFOS)
+  //const mod3finalMultiplier= -3617 // optimized for 35 LFO and 116 BPM (4.09 hertz)
+  //// BUG. in sf2, hertz at 35 LFOS and 116 BPM (29 cc115) is ~11.8; this would be an sf2num of 635. My calculations say it should be -1199 sf2num and 4.1 Hz
+  //// NOTE: fluidsynth applies the curve differently. Transcribe fluidsynth-modulator-test.c to JS
+  //var mod1cc21 = cc21curve*mod1finalMultiplier
+  //if (cc21LFOS==35){console.log(cc21Limited+", "+cc21curve+", "+mod1cc21)}
+  //var mod2cc115=cc115curve*mod2finalMultiplier
+  //var mod3cc116=cc116Limited*mod3finalMultiplier
+  //return mod1cc21+mod2cc115+mod3cc116 // multiple modulators with the same destination are combined additively
+}
+	
+await setupChart1();
+await setupChart2();
+LFOSelem.addEventListener('change', setupChart2)
+BPMelem.addEventListener('change', setupChart1)
+SF2numHertzElem.addEventListener('change', function(){setupChart1(); setupChart2()})
+})();
+
+
+
+function simulateGbaLfo( BPM,  LFOS){ // LFOS can't be 0 because 0 disables LFO entirely
+ const oneLFOScycleLenIn16thNotes = 43; // this number is not exact, but I think the math in the rest of the function is good
+ const base = oneLFOScycleLenIn16thNotes;
+ var cycleLenInBeats = base / LFOS // length it should take to complete one cycle in beats (16th note beats)
+ var curBPMcycleLenSec = (cycleLenInBeats / 4) * (60 / BPM)
+ var hertz = 1 / curBPMcycleLenSec
+ return hertz
+}
+
+function hertzToSf2num(hertz){
+  return 1200 * Math.log2(hertz/8.176)
+}
+
+function sf2numToHertz(sf2num){
+  //return 2^(sf2num / 1200) * 8.176
+	return Math.pow(2, sf2num / 1200) * 8.176
+}
+
+/*
+for (let i=1; i<=23; i++){
+  let sf2num=hertzToSf2num(i)
+  console.log(sf2num+" "+sf2numToHertz(sf2num))
+}
+*/
+
+var chart1;
+async function setupChart1(inBPM){
+	if (chart1){
+		chart1.destroy()
+	}
+
+	c1xValuesLFOS=[]
+	c1yValuesGBAidealSF2num=[]
+	c1yValuesModulatorSF2num=[]
+
+	const curBPM=BPMelem.value
+	for (let i=1, l=127; i<=l; i++){
+		c1xValuesLFOS.push(i)
+		let hertz=simulateGbaLfo(curBPM,i) // when BPM is changed, the y-interval on the graph changes, but the curve & slope & distance between highest y and lowest y stays the same
+		var modSim=await simulateModulator(curBPM,i)
+		if (SF2numHertzElem.value=='Hertz') {
+			c1yValuesGBAidealSF2num.push(hertz)
+			c1yValuesModulatorSF2num.push(sf2numToHertz(modSim))
+		} else {
+			let sf2Num=hertzToSf2num(hertz) // the sf2 modulation num that equals that hertz
+			c1yValuesGBAidealSF2num.push(sf2Num)
+			c1yValuesModulatorSF2num.push(modSim)
+		}
+	}
+
+
+
+	chart1=new Chart("myChart", {
+		type: "line",
+		data: {
+			labels: c1xValuesLFOS,
+			datasets: [{
+				fill: false,
+				//lineTension: 0,
+				backgroundColor: "blue",
+				borderColor: "blue",
+				data: c1yValuesGBAidealSF2num
+			},{
+				fill: false,
+				backgroundColor: "green",
+				borderColor: "green",
+				data: c1yValuesModulatorSF2num
+			}]
+		},
+		options: {
+			legend: {display: false},
+			title: {
+				display: true,
+				text: "X: LFOS. Y: hertz"+(SF2numHertzElem.value=='Hertz' ? "" : "-sf2Num")+". At "+curBPM+" BPM"
+			}
+		}
+	});
+
+	document.getElementById("chart1Anno").innerText="blue line y max distance: "+(diff(c1yValuesGBAidealSF2num[126], c1yValuesGBAidealSF2num[0]))+"\ngreen line y max distance: "+(diff(c1yValuesModulatorSF2num[126], c1yValuesModulatorSF2num[0]))
+
+}
+
+var chart2;
+async function setupChart2(){
+if (chart2){
+	chart2.destroy()
+}
+
+c2xValuesBPM=[]
+c2yValuesGBAidealSF2num=[]
+c2yValuesModulatorSF2num=[]
+
+const curLFOS=LFOSelem.value;
+for (let i=1, l=510; i<=l; i++){
+  c2xValuesBPM.push(i)
+  let hertz=simulateGbaLfo(i,curLFOS) // when BPM is changed, the y-interval on the graph changes, but the curve & slope & distance between highest y and lowest y stays the same
+  let modSim=await simulateModulator(i,curLFOS)
+  if (SF2numHertzElem.value=='Hertz') {
+		c2yValuesGBAidealSF2num.push(hertz)
+		c2yValuesModulatorSF2num.push(sf2numToHertz(modSim))
+  } else {
+		let sf2Num=hertzToSf2num(hertz) // the sf2 modulation num that equals that hertz
+		c2yValuesGBAidealSF2num.push(sf2Num)
+		c2yValuesModulatorSF2num.push(modSim)
+  }
+}
+
+chart2=new Chart("myChart2", {
+  type: "line",
+  data: {
+    labels: c2xValuesBPM,
+    datasets: [{
+      fill: false,
+      //lineTension: 0,
+      backgroundColor: "blue",
+      borderColor: "blue",
+      data: c2yValuesGBAidealSF2num
+    },{
+      fill: false,
+      backgroundColor: "green",
+      borderColor: "green",
+      data: c2yValuesModulatorSF2num
+    }]
+  },
+  options: {
+    legend: {display: false},
+		title: {
+			display: true,
+			text: "X: BPM. Y: hertz"+(SF2numHertzElem.value=='Hertz' ? "" : "-sf2Num")+". At "+curLFOS+" LFOS"
+		}
+  }
+});
+
+
+	document.getElementById("chart2Anno").innerText="blue line y max distance: "+(diff(c2yValuesGBAidealSF2num[509], c2yValuesGBAidealSF2num[0]))+"\ngreen line y max distance: "+(diff(c2yValuesModulatorSF2num[509], c2yValuesModulatorSF2num[0]))
+
+}
+
+</script>
