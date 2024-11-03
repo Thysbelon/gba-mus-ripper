@@ -232,13 +232,16 @@ On the other side, there might be fake positives, that is cases where the detect
 
 Q: Will it sound EXACTLY like on the GBA?
 
-A: No. It will sound close, but it is impossible to recreate GBA sound exactly with Midi and SF2. Though the Midi and SF2 may sound "better" in a sense due to not having the GBA's white noise, there are many subtle effects in GBA music that will be dropped in the conversion. For example, reverb doesn't sound the same, pan position LFO (an instrument bouncing between the left and right ears) is unsupported in Midi and SF2, etc. Try listening to this [comparison between the opening flute of Sky Tower on a real GBA vs on Midi and SF2](youtubePlaceholder).
-On the other side the GameBoy instruments will sound different because the're emulated using samples. These instruments are quantified in volume and pitch, and there is no way to reproduce this imperfection in the .SF2 standard. Bregalad recorded the samples from a DS in GBA mode.
+A: No. It will sound close, but it is impossible to recreate GBA sound exactly with Midi and SF2. Though the Midi and SF2 may sound "better" in a sense due to not having the GBA's white noise, there are many subtle effects in GBA music that will be dropped in the conversion. For example, reverb doesn't sound the same, pan position LFO (an instrument bouncing between the left and right ears) is unsupported in Midi and SF2, etc.<!-- Try listening to this [comparison between the opening flute of Sky Tower on a real GBA vs on Midi and SF2](youtubePlaceholder). TODO: record this -->
+
+The GameBoy instruments will sound different because the're emulated using samples. These instruments are quantified in volume and pitch, and there is no way to reproduce this imperfection in the .SF2 standard. Bregalad recorded the samples from a DS in GBA mode.
+
 The Golden Sun synth instrument, added in version 2.2, also does not sound exactly like its original counterpart, again because it's emulated using samples. The assembly code for those instruments was unrolled and extremely optimised, therefore it was very hard to know exactly how those instruments were designed.
 
 Q: Can I re-use the soundfont to play other MIDIs / Can I use soundfont from Game A to play music from Game B?
 
 A: Yes but unfortunately there is a 99% of chances it will sound like total crap, because very few games have a General MIDI compliant soundfont. If you're looking for games with partially Genral Midi compliant soundfonts, there's Golden Sun and Castlevania: Aria of Sorrow. (All of these have a lot of missing instruments and some non-General MIDI compilant too so in all cases you'd need some MIDI editing to get the sound you'd expect). There are also some romhacks for games that make the sound banks General MIDI compliant.
+
 If you accept however to do some MIDI editing and/or some SoundFont editing manually, then the answer to both of these questions is of course yes, and GBA Mus Ripper will probably be a great help.
 
 Q: Can I also rip voices/sound effects?
