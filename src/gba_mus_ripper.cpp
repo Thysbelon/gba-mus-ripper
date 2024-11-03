@@ -8,10 +8,7 @@
  * If the engine is found it rips all musics to MIDI (.mid) format and all
  * instruments to SoundFont 2.0 (.sf2) format.
  */
-/* 
-TODO: 
-- add the option to do a dry run (run the program with command line output, but without writing any files.)
-*/
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -20,6 +17,7 @@ TODO:
 #include "hex_string.hpp"
 #include <stdio.h> // popen
 #include <string> // stoul
+#include <utility> // pair
 
 //#ifndef WIN32
 //namespace sappy_detector
@@ -38,9 +36,10 @@ static bool xg = false;
 static bool rc = false;
 static bool sb = false;
 static bool raw = false;
+static bool dry = false;
 static uint32_t song_tbl_ptr = 0;
 
-static const int sample_rates[] = {-1, 5734, 7884, 10512, 13379, 15768, 18157, 21024, 26758, 31536, 36314, 40137, 42048};
+static const int sample_rates[] = {-1, 5734 /*0 MP2K.yaml number*/, 7884 /*1*/, 10512 /*2*/, 13379, 15768, 18157, 21024, 26758, 31536, 36314, 40137, 42048};
 
 static void print_instructions()
 {
@@ -54,6 +53,7 @@ static void print_instructions()
 		"-xg  : Output MIDI will be compliant to XG standard (instead of default GS standard).\n"
 		"-sb  : Separate banks. Every sound bank is riper to a different .sf2 file and placed into different sub-folders (instead of doing it in a single .sf2 file and a single folder).\n"
 		"-raw : Output MIDIs exactly as they're encoded in ROM, without linearise volume and velocities and without simulating vibratos.\n"
+		"-dry : Run the program without writing any files. Useful for developers testing the program.\n"
 		"[address]: Force address of the song table manually. This is required for manually dumping music data from ROMs where the location can't be detected automatically.\n"
 	);
 	exit(0);
@@ -87,10 +87,10 @@ static std::string dec4(unsigned int n)
 	return s;
 }
 
-static uint32_t getSoundTable(std::string prg_prefix, std::string inGBA_path){ // https://stackoverflow.com/questions/125828/capturing-stdout-from-a-system-command-optimally
+static uint32_t getSoundTable(std::string prg_prefix, std::string inGBA_path){ 
 	std::string mp2ktoolCmd = prg_prefix + "mp2ktool songtable \"" + inGBA_path + "\"";
 	printf("DEBUG: going to call popen(%s)\n", mp2ktoolCmd.c_str());
-	FILE *mp2ktoolFile = popen(mp2ktoolCmd.c_str(), "r");
+	FILE *mp2ktoolFile = popen(mp2ktoolCmd.c_str(), "r"); // https://stackoverflow.com/questions/125828/capturing-stdout-from-a-system-command-optimally
 
 	if (!mp2ktoolFile){
 		return 0;
@@ -102,6 +102,84 @@ static uint32_t getSoundTable(std::string prg_prefix, std::string inGBA_path){ /
 	printf("result: 0x%08x\n", x); // https://stackoverflow.com/questions/14733761/printf-formatting-for-hexadecimal
 	pclose(mp2ktoolFile);
 	return x;
+}
+
+static std::pair<int, int> testSampleRateAndVolValidity(uint32_t paramAddress){ // TODO: return Vol as well?
+	const uint8_t testNums[] = {16/*for most games*/, 32/*for pokemon/gamefreak*/};
+	for (int i=0; i<2; i++){
+		fseek(inGBA, paramAddress - testNums[i], SEEK_SET);
+		printf("testing with %d\n", testNums[i]);
+		
+		uint32_t parameter_word;
+		fread(&parameter_word, 4, 1, inGBA);
+		//printf("parameter_word: %lu\n", parameter_word);
+		printf("parameter_word: 0x%x\n", parameter_word);
+		
+		int polyphony, mainVol, sampleRateIndex, dacBits;
+		polyphony = (parameter_word & 0x000F00) >> 8;
+		mainVol = (parameter_word & 0x00F000) >> 12;
+		sampleRateIndex = (parameter_word & 0x0F0000) >> 16;
+		dacBits = 17-((parameter_word & 0xF00000) >> 20);
+		
+		bool paramsValid = mainVol != 0
+			&& polyphony <= 12
+			&& dacBits >= 6
+			&& dacBits <= 9
+			&& sampleRateIndex >= 1
+			&& sampleRateIndex <= 12
+			&&((parameter_word & 0xff000000) == 0);
+		
+		if (paramsValid == true) return std::make_pair(sampleRateIndex, mainVol);
+	}
+	/* If neither is found there is an error */
+	puts("Only a partial sound engine was found.");
+	return std::make_pair(-1, -1);
+}
+
+static std::pair<int, int> getSampleRateIndexAndVol(std::string prg_prefix, std::string inGBA_path){
+	std::string mp2ktoolCmd = prg_prefix + "mp2ktool info \"" + inGBA_path + "\"";
+	printf("DEBUG: going to call popen(%s)\n", mp2ktoolCmd.c_str());
+	FILE *mp2ktoolFile = popen(mp2ktoolCmd.c_str(), "r");
+
+	if (!mp2ktoolFile){
+		return std::make_pair(0,0);
+	}
+
+	char buffer[1024];
+	for (int i=0; i<6; i++){ // skip 6 lines
+		fgets(buffer, sizeof(buffer), mp2ktoolFile);
+	}
+	char *line = fgets(buffer, sizeof(buffer), mp2ktoolFile);
+	std::string stringLine(line);
+	// "m4a_main                "
+	stringLine.erase(0,24);
+	if (stringLine=="null"){
+		printf("address of sound engine could not be found.\n");
+		pclose(mp2ktoolFile);
+		// TODO: link this program with a yaml parsing library; at this line, when mp2ktool can't find the sound engine, search VG Music Studio's MP2K.yaml for the game's sample rate.
+		// code that VG Music Studio uses to get the GameCode and version for searching in MP2K.yaml (addresses are absolute, not relative):
+		// GameCode = Reader.ReadString(4, false, 0xAC);
+		// Version = Reader.ReadByte(0xBC);
+		fseek(inGBA, 0xAC, SEEK_SET);
+		char gameCode[5];
+		fread(&gameCode, 4, 1, inGBA);
+		printf("gameCode: %s\n", gameCode);
+		fseek(inGBA, 0xBC, SEEK_SET);
+		uint8_t version;
+		fread(&version, 1, 1, inGBA);
+		printf("version: %i\n", version);
+		// yaml reading here
+		return std::make_pair(0,0);
+	}
+	uint32_t sound_engine_adr = std::stoul(stringLine, nullptr, 16); // https://stackoverflow.com/questions/1070497/c-convert-hex-string-to-signed-integer
+	printf("sound_engine_adr: 0x%08x\n", sound_engine_adr); // https://stackoverflow.com/questions/14733761/printf-formatting-for-hexadecimal
+	pclose(mp2ktoolFile);
+	
+	/* Test validity of engine offset with -16 and -32 */
+	std::pair<int, int> sampleRateIndexAndVol = testSampleRateAndVolValidity(sound_engine_adr);
+	if (sampleRateIndexAndVol.first == -1) return std::make_pair(0,0);
+  
+	return sampleRateIndexAndVol;
 }
 
 static void parse_args(const int argc, char *const args[])
@@ -125,6 +203,8 @@ static void parse_args(const int argc, char *const args[])
 				sb = true;
 			else if (!strcmp(args[i], "-raw"))
 				raw = true;
+			else if (!strcmp(args[i], "-dry"))
+				dry = true;
             else if (!strcmp(args[i], "-o") && argc >= i + 1)
             {
                 outPath = args[++i];
@@ -237,6 +317,11 @@ int main(int argc, char *const argv[])
 		//printf("# of song levels: %d\n", song_levels);
 		//song_tbl_ptr = get_GBA_pointer() + 12 * song_levels;
 	}
+	
+	// attempt to get sample rate
+	std::pair<int, int> sampleRateIndexAndVol = getSampleRateIndexAndVol(prg_prefix, inGBA_path);
+	sample_rate = sample_rates[sampleRateIndexAndVol.first];
+	main_volume = sampleRateIndexAndVol.second;
 
 	// Create a directory named like the input ROM, without the .gba extension
 	mkdir(outPath);
@@ -350,6 +435,7 @@ int main(int argc, char *const argv[])
 			// Bank number, if banks are not separated
 			if (!sb)
 				seq_rip_cmd += " -b" + std::to_string(bank_index);
+			if (dry) seq_rip_cmd += " -dry";
 
 			#ifdef WIN32
 			seq_rip_cmd += "\"";
@@ -382,6 +468,7 @@ int main(int argc, char *const argv[])
 			if (sample_rate) sf_rip_args += " -s" + std::to_string(sample_rate);
 			if (main_volume)	sf_rip_args += " -mv" + std::to_string(main_volume);
 			if (gm) sf_rip_args += " -gm";
+			if (dry) sf_rip_args += " -dry";
 			sf_rip_args += " 0x" + hex(*j);
 			
 			#ifdef WIN32
@@ -406,6 +493,7 @@ int main(int argc, char *const argv[])
 		if (main_volume) sf_rip_args += " -mv" + std::to_string(main_volume);
 		// Pass -gm argument if necessary
 		if (gm) sf_rip_args += " -gm";
+		if (dry) sf_rip_args += " -dry";
 
 		// Make sound banks addresses list.
 		for (bank_t j = sound_bank_list.begin(); j != sound_bank_list.end(); ++j)

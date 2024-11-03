@@ -57,6 +57,7 @@ static bool gs = false;
 static bool xg = false;
 static bool lv = false;
 //static bool sv = false;
+static bool dry = false;
 
 static MIDI midi(24);
 static FILE *inGBA;
@@ -75,8 +76,9 @@ static void print_instructions()
 		"-rc : Rearrange Channels. This will avoid using the channel 10, and use it at last ressort only if all 16 channels should be used\n"
 		"-gs : This will send a GS system exclusive message to tell the player channel 10 is not drums.\n"
 		"-xg : This will send a XG system exclusive message, and force banks number which will disable \"drums\".\n"
-		"-lv : Linearise volume and velocities. This should be used to have the output \"sound\" like the original song, but shouldn't be used to get an exact dump of sequence data."
-		"-sv : (Disabled) Simulate vibrato. This will insert controllers in real time to simulate a vibrato, instead of just when commands are given. Like -lv, this should be used to have the output \"sound\" like the original song, but shouldn't be used to get an exact dump of sequence data.\n\n"
+		"-lv : Linearise volume and velocities. This should be used to have the output \"sound\" like the original song, but shouldn't be used to get an exact dump of sequence data.\n"
+		"-sv : (Disabled) Simulate vibrato. This will insert controllers in real time to simulate a vibrato, instead of just when commands are given. Like -lv, this should be used to have the output \"sound\" like the original song, but shouldn't be used to get an exact dump of sequence data.\n"
+		"-dry : Run the program without writing any files. Useful for developers testing the program.\n\n"
 		"It is possible, but not recommended, to use more than one of these flags at a time.\n"
 	);
 	exit(0);
@@ -643,6 +645,8 @@ static uint32_t parseArguments(const int argv, const char *const args[])
 				lv = true;
 			//else if (args[i][1] == 's' && args[i][2] == 'v')
 			//	sv = true;
+			else if (args[i][1] == 'd' && args[i][2] == 'r' && args[i][3] == 'y')
+				dry = true;
 			else
 				print_instructions();
 		}
@@ -675,11 +679,13 @@ int main(int argc, char *argv[])
 
 	// Open output file once we know the pointer points to correct data
 	//(this avoids creating blank files when there is an error)
-	outMID = fopen(argv[2], "wb");
-	if (!outMID)
-	{
-		fprintf(stderr, "Can't write to file %s.\n", argv[2]);
-		exit(0);
+	if (!dry) {
+		outMID = fopen(argv[2], "wb");
+		if (!outMID)
+		{
+			fprintf(stderr, "Can't write to file %s.\n", argv[2]);
+			exit(0);
+		}
 	}
 
 	printf("Converting...");
@@ -774,7 +780,7 @@ int main(int argc, char *argv[])
 	printf(" Maximum simultaneous notes: %d\n", simultaneous_notes_max);
 
 	printf("Dump complete. Now outputting MIDI file...");
-	midi.write(outMID);
+	if (!dry) midi.write(outMID);
 	// Close files
 	fclose(inGBA);
 	puts(" Done!\n");

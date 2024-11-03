@@ -1,22 +1,23 @@
 # GBA Mus Ripper 
 
-GBA Mus Ripper by Bregalad and CaptainSwag101 (updated by berg8793 and IAG)
+GBA Mus Ripper by Bregalad and CaptainSwag101 (updated by berg8793, IAG and Thysbelon)
 
-Development 4.0; July 15th, 2024
+README originally written by Bregalad; edited by Thysbelon.
+
+Downloads are available in the [releases section](https://github.com/Thysbelon/gba-mus-ripper/releases) on the right of this repository's GitHub homepage.
 
 ---
 
-GBA Mus Ripper is a suite of programs to rip music from Game Boy Advance (GBA) games using the "Sappy" sound engine, a really common engine among commercial GBA games.
-Music rippers from GBA games already exists, but this one is more complete and versatile, and less buggy than the existing ones (as for the date of writing this).
-It's the first one that actually converts instruments to SoundFont format, including GameBoy instruments.
+GBA Mus Ripper is a suite of programs to rip music from Game Boy Advance (GBA) games using the MusicPlayer2000 a.k.a. "Sappy" sound engine, a [really common engine among commercial GBA games](https://vgmpf.com/Wiki/index.php?title=User:IgoreshaZhu/GBA_sound_drivers#MusicPlayer2000.2FSappy_.28Nintendo.29).
 
 ---
 
 ## Applications:
 
-- Listen to GBA music with higher quality sound hardware than a GBA or an emulated GBA which only have 8-bit sound
-- Make other music sound like a GBA game.
-- Simply get music sheets of GBA games.
+- Listen to GBA music with a higher bit depth than 8 and no white noise.
+- Apply the instrument set from a GBA game to another midi file.
+- Simply get sheet music of a GBA game's tracks.
+- Edit a song for a romhack by editing its Midi conversion, then convert it back to MP2K and inject it into the rom with [Midi2AGB](https://github.com/Thysbelon/midi2agb) and [gba-song-assembler](https://github.com/Thysbelon/gba-song-assembler). (The options `-xg -sb -rc -raw` should be used for this purpose)
 
 The tools come in the form of 4 separate executable files.
 
@@ -27,22 +28,21 @@ IMPORTANT NOTE: The "gba_mus_ripper" executable simply calls the other 3 executa
 ### 1) GBA Mus Ripper
 
 This is the main program which does everything automatically. Normally you'd only want to use this one, but the other 3 sub-programs can also be used individually too.
-This program detects the presence of the sappy sound engine in a given ROM, and converts all detected songs to .mid files, and rip all detected sound banks to a .sf2 file.
+This program detects the presence of the MP2K sound engine in a given ROM, and converts all detected songs to .mid files, and rip all detected sound banks to a .sf2 file.
 
 # HOW TO USE THIS PROGRAM
 
 On Windows, you should open a console prompt in the folder containing the ".exe" files.
-To do this, first search "Command Prompt" in the Start bar and open its file location. This will take you to the Command Prompt shortcut location in Windows Explorer.
-Next, right-click on "Command Prompt", select "Properties", then select "Open File Location" in the new pop-up window.
-This will take you to the "system32" folder where "cmd.exe" is located. From there, it's a quick copy-and-paste into the folder containing the GBA Mus Ripper ".exe" files and you're good to go.
+Type "cmd" in the File Explorer address bar, then press "enter". [(How-To Geek's guide)](https://www.howtogeek.com/789662/how-to-open-a-cmd-window-in-a-folder-on-windows/)
 
-Now that the console prompt is open in your folder, type the following (minus brackets or parentheses): `gba_mus_ripper (input_file) [-o output_directory] [address] [flags]`
+Now that the console prompt is open in your folder, type the following (parenthesis is a placeholder for a required input, brackets are a placeholder for optional settings):   
+`gba_mus_ripper (input_file) [-o output_directory] [address] [flags]`
 
 `input_file`: The FULL path name (in quotes) of the GBA ROM you want to rip from. (Hint: You can drag and drop the ROM into the command line)
 
 `output_directory`: Again, a FULL path name (in quotes) of where you want MIDIs and soundfonts to be saved. If this parameter is not specified, the output directory will automatically be the same folder as where your ROM is located.
 
-`address`: This is an offset address in hexadecimal format for when the sappy detector doesn't work and you have to rip a ROM semi-manually (see said section below for more details).
+`address`: This is an offset address in hexadecimal format for when mp2ktool can't automatically detect the sound table address and you have to rip a ROM semi-manually<!-- (see said section below for more details)-->.
 
 The following flag options are available:
 
@@ -54,24 +54,52 @@ The following flag options are available:
 `-rc` : Rearrange channels in output MIDIs so channel 10 is avoided. Needed by sound
       cards where it's impossible to disable "drums" on channel 10 even with GS or XG commands
       
-`-sb` : Separate banks. Every sound bank is ripper to a different .sf2 file and placed
-      into different sub-folders (instead of doing it in a single .sf2 file and a single folder)
+`-sb` : Separate banks. Every sound bank is ripped to a different .sf2 file and placed
+      into different sub-folders (instead of doing it in a single .sf2 file and a single folder). 
+      (Some games' sound banks won't rip correctly unless this option is enabled. e.g. Castlevania: Circle of the Moon)
       
-`-raw` : Output MIDIs exactly as they're encoded in ROM, without linearise volume and
-       velocities and without simulating vibratos.
+`-raw` : Output MIDIs exactly as they're encoded in ROM, without linearising volume and
+       velocities<!-- and without simulating vibratos-->.
 
-On Linux, you should first compile the program yourself. See compilation notes a few chapters below.
-Once the program is compiled into executable form, its usage is identical.
+<!--On Linux, you should first compile the program yourself. See compilation notes a few chapters below.
+Once the program is compiled into executable form, its usage is identical.-->
 
-### 2) Sappy Detector
+### 2) mp2ktool
 
-This program is here to detect the sappy sound engine. If an engine is found, it prints info about how the game uses the engine on the screen. This is the easiest way to know if a given GBA games use the sappy sound engine or not.
+This is a program [written by loveemu](https://github.com/loveemu/loveemu-lab/tree/master/gba/mp2ktool). Its purpose here is to detect the MP2K sound engine. There are various operations the user can use to print various kinds of info about how a game uses the MP2K engine; a list of these operations can be viewed by running just `mp2ktool`.
 
-Usage: `sappy_detector game.gba`
+Using mp2ktool is the easiest way to know if a given GBA game uses the MP2K sound engine or not.
+
+Usage: `mp2ktool <operation>`
+
+Operations:
+
+```
+info ROM.gba
+  search m4a block and show their basic info.
+songlist (SongTable address) ROM.gba
+  show list of items in song table.
+
+songtable ROM.gba
+  search song table offset.
+songtableptr ROM.gba
+  search song table pointer offset.
+mplaytable ROM.gba
+  search music player table offset.
+ofslist ROM.gba
+  show table offsets in format of gba2midi ofslist.txt
+ofslist+ ROM.gba
+  show table offsets in format of m4aroms.csv
+
+header romtitle ROM.gba
+  show 4 bytes ROM title in GBA ROM header.
+header romid ROM.gba
+  show 4 bytes ROM ID in GBA ROM header.
+```
 
 ### 3) Song Ripper
 
-This program rips sequence data from a GBA game using sappy sound engine to MIDI (.mid) format. You'd typically use this if you'd like to get the spreadsheet of a particular song with more options available than a plain dump with the default parameters from GBA Mus Ripper.
+This program rips sequence data from a GBA game using the MP2K sound engine to MIDI (.mid) format. You'd typically use this if you'd like to get the spreadsheet of a particular song with more options available than a plain dump with the default parameters from GBA Mus Ripper.
 
 Usage: `song_ripper infile.gba outfile.mid song_address [flags]`
 
@@ -79,7 +107,7 @@ Usage: `song_ripper infile.gba outfile.mid song_address [flags]`
 
 `-gm` : Give General MIDI names to presets. Note that this will only change the names and will NOT magically turn the soundfont into a General MIDI compliant soundfont.
 
-In general MIDI, midi channel 10 is reserved for drums. Unfortunately, we do not want to use any "drums" in the output file. I have 3 modes to fix this problem:
+In general MIDI, midi channel 10 is reserved for drums. Unfortunately, we do not want to use any "drums" in the output file. There are 3 modes to fix this problem:
 
 `-rc` : Rearrange Channels. This will avoid using the channel 10, and use it at last ressort only if all 16 channels should be used
 
@@ -89,11 +117,11 @@ In general MIDI, midi channel 10 is reserved for drums. Unfortunately, we do not
 
 `-lv` : Linearise volume and velocities. This should be used to have the output "sound" like the original song, but shouldn't be used to get an exact dump of sequence data.
 
-`-sv` : Simulate vibrato. This will insert controllers in real time to simulate a vibrato, instead of just when commands are given. Like -lv, this should be used to have the output "sound" like the original song,but shouldn't be used to get an exact dump of sequence data.
+<!--`-sv` : Simulate vibrato. This will insert controllers in real time to simulate a vibrato, instead of just when commands are given. Like -lv, this should be used to have the output "sound" like the original song,but shouldn't be used to get an exact dump of sequence data.-->
 
 ### 4) Sound Font Ripper
 
-Dumps a sound bank (or a list of sound banks) from a GBA game which is using the sappy sound engine to SoundFont 2.0 (.sf2) format. You'd typically use this to get a SoundFont dump of data within a GBA game directly without dumping any other data.
+Dumps a sound bank (or a list of sound banks) from a GBA game which is using the MP2K sound engine to SoundFont 2 (.sf2) format. You'd typically use this to get a SoundFont dump of data within a GBA game directly without dumping any other data.
 
 Usage: `sound_font_ripper in.gba out.sf2 [flags] address1 [address2] ....`
 
@@ -109,7 +137,7 @@ Flags:
 
 `-mv` : Main volume for sample instruments. Range: 1-15. Game Boy channels are unaffected.
 
-IMPORTANT NOTE: You need to leave the included file `psg_data.raw` and `goldensun_synth.raw` INTACT for Sound Font Ripper to work properly. If you remove or affect the files in any way, the "old" Game Boy PSG instruments and the Golden Sun's synth instrument (respecively) won't be dumped at all.
+IMPORTANT NOTE: You need to leave the included file `psg_data.raw` and `goldensun_synth.raw` INTACT for Sound Font Ripper to work properly. If you remove or affect the files in any way, the "old" Game Boy PSG instruments and Golden Sun's synth instrument (respectively) won't be dumped at all.
 
 ---
 
@@ -117,19 +145,36 @@ IMPORTANT NOTE: You need to leave the included file `psg_data.raw` and `goldensu
 
 ### Playback converted MIDIs
 
-To play back MIDIs I recommend Winamp or Foobar2000. Unfortunately it seems song looping is error prone in Winamp (Nullsoft MIDI reader v3.5). I hope they'll fix it some day.
-To use SoundFont data to play the ripped MIDIs, I recommend BASSMIDI driver, which is free and allows playback of MIDI files using a sound font file.
-
 Both MIDI and SF2 are widely used standards so there are a wide range of programs supporting these.
+
+I recommend using a synthesizer that uses the FluidSynth library.   
+FluidSynth is a pedantic midi and SF2 synthesizer library that focuses on following the midi and SF2 standard closely. It supports modulators in SF2 files, which this program uses to have pitch and volume LFO sound accurate to GBA. I always use FluidSynth when testing this program.
+
+[VLC Media Player has a midi plugin that uses FluidSynth](https://wiki.videolan.org/Midi/). This plugin also supports choosing whatever soundfont file you want (either through the GUI, or you can run VLC from the command line with `vlc --soundfont input.sf2 input.midi` to temporarily change the soundfont).
+
+For viewing and editing midi files, I recommend using [Reaper](https://www.reaper.fm/) (import midi with a separate track for each channel), [FluidSynthPlugin](https://github.com/prof-spock/FluidSynthPlugin), and [SWS actions to quickly copy and paste FluidSynthPlugin to all tracks](https://forums.cockos.com/showpost.php?p=1793337&postcount=4).
+
+Another option for editing midi files is using MidiEditor connected to QSynth (GUI for the FluidSynth program).
+
+I still need to research how to connect QSynth to Reaper.
 
 ### Compile the GBA Mus Ripper suite
 
-First, you should edit the Makefile (don't worry it's a very simple one) to suit your needs (compiler, flags, etc...). You need support for C++11, this means if you're using gcc you're going to need a version more recent than 4.8. It's probably compilable on 4.7.x but it's simpler to just update the compiler.
+Compilation is the act of turning human-readable source code into machine code that a computer can run. Ready-to-run builds are in the releases section. Compilation is *only* neccessary if you are a developer who wishes to make modifications to this program, or there is no release build for your platform.
 
-Also if you insist on using something else than gcc, you should be very careful as somewhere in sf2_chunks.h, there is a struct class that must be packed in order to output correct data. If your compiler doesn't support the non-standard __attribute__ ((packed)) extension you'd have to figure out another way around the problem by yourself.
-One of the files is .c instead of .cpp but this file is compatible with both C99 and C++11 really, it just doesn't use any of the C++ extensions.
+First, use git to clone this repository **with submodules**. The sf2cute library that sound_font_ripper depends on is a submodule, and if it is not present the gba_mus_ripper suite will not compile.
 
-### Rip songs semi-manually
+Use `git clone --recurse-submodules https://github.com/Thysbelon/gba-mus-ripper.git`
+
+Or, if you already cloned the repository, run `git submodule update --init --recursive` to fetch submodules.
+
+<!--First, you should edit the Makefile (don't worry it's a very simple one) to suit your needs (compiler, flags, etc...). -->You need support for C++11, this means if you're using gcc you're going to need a version more recent than 4.8. It's probably compilable on 4.7.x but it's simpler to just update the compiler.
+
+There are separate Makefiles for different platforms. The default Makefile is for Linux. Makefile-windows is for compiling on Windows. Makefile-windows-[x86/aarch64]-on-ubuntu is for cross-compiling to Windows on Linux. Both Windows native and cross compilation use the compiler [llvm-mingw](https://github.com/mstorsjo/llvm-mingw), because it is a portable download that requires little set-up.
+
+**Makefile-windows is currently nonfunctional.** This is because the current default Linux Makefile calls CMake to compile the sf2cute library that sound_font_ripper depends on. llvm-mingw does not come with a CMake equivalent and I do not know of any Windows CMake programs that are as easy to install as llvm-mingw.
+
+<!--### Rip songs semi-manually
 
 When the automatic detection fails, it's possible (and actually fairly easy) to rip the data in a semi-automatic way. Semi-automatic because you have to locate the song table yourself within the ROM, but then the songs and their sound fonts are still dumped automatically by GBA Mus Ripper (you don't have to call Song Ripper and Sound Font Ripper manually, although you could of course do this).
 
@@ -165,36 +210,36 @@ Now, if this is still too complicated, there is yet another alternative. Search 
 
 and it will print the offset on the screen, then use this offset as an argument to gba_mus_ripper and it'll rip it.
 I only heard about this tool very recently but it sounds interesting. I'd have to give it a deeper investigation.
-
+-->
 ---
 
-### Note about the old Java version 1.1
+<!--### Note about the old Java version 1.1
 
 The version 1.1 of the program, written in Java and requiring the JRE to run, is still provided as archive for fallback for people who can't run nor compile the new version. This version is not supported by any means. It's usage and functionality is roughly equivalent to v2.0 with less features.
 
----
+--- -->
 
 ## FREQUENTLY ASKED QUESTIONS
 
-Q: How do I know if game XXX uses sappy engine?
+Q: How do I know if game XXX uses the MP2K engine?
 
-A: Just try to run sappy_detector on it, if it doesn't work then it's very likely the game doesn't use the sappy engine. A good 80-90% of commercial GBA games uses this engine.
+A: Just try to run mp2ktool on it, if it doesn't work then it's very likely the game doesn't use the MP2K engine. A good 80-90% of commercial GBA games uses this engine. There are also multiple lists of every game that uses the MP2K sound engine: [IgoreshaZhu's list of GBA games by sound engine](https://vgmpf.com/Wiki/index.php?title=User:IgoreshaZhu/GBA_sound_drivers), [loveemu's Game Boy Advance Sound Driver List](https://gist.github.com/loveemu/5475a80e9fba4e71affbf9ca7a939ae5), [ofslist.txt: List of games using MusicPlayer2000](https://www.caitsith2.com/gsf/ofslist.txt)
 
-Q: If the sappy detector doesn't detect the engine header, does this mean the game doesn't use the sappy engine?
+<!--Q: If the sappy detector doesn't detect the engine header, does this mean the game doesn't use the sappy engine?
 
 A: No. The detector is heuristic. There is games that uses sappy and that have no header. Metroid games comes in mind. Since v2.0 it's still possible to rip them by manually telling gba_mus_ripper the song table address. It will just not know the base sample rate and main volume, and use default values for them. This could affect the audibility of the music significantly.
-On the other side, there might be fake positives, that is cases where the detector "thinks" there is a sappy header when there is none. If that's the case the program will start to jump garbage, but will probably encounter an error before the thing terminates. If this happens, you'd also have to give the address of the song table manually.
+On the other side, there might be fake positives, that is cases where the detector "thinks" there is a sappy header when there is none. If that's the case the program will start to jump garbage, but will probably encounter an error before the thing terminates. If this happens, you'd also have to give the address of the song table manually. TODO: shorten this to just the bit about metroid being difficult to detect volume. Figure out if there's a variant of MP2K that mp2ktool can't detect -->
 
 Q: Will it sound EXACTLY like on the GBA?
 
-A: No, but in all honesty very damn close. The sampled instruments will actually sound BETTER, because the GBA sound hardware has 8-bit sound output, this means the Digital to Analog in the GBA can only output 256 voltage levels, which means the output is being quantified and is very noisy.
-On the other side the good old GameBoy instruments will sound different because the're emulated using samples. These instruments are quantified in volume and pitch, and there is no way to reproduce this imperfection in the .SF2 standard. I used samples actually recorded from my DS in GBA mode.
-The Golden Sun synth instrument, added in version 2.2, also does not sound exactly like their original counterpart, again because they're emulated using samples. The assembly code for those instruments was unrolled and extremely optimised, therefore it was very hard to know exactly how those instruments were designed.
+A: No. It will sound close, but it is impossible to recreate GBA sound exactly with Midi and SF2. Though the Midi and SF2 may sound "better" in a sense due to not having the GBA's white noise, there are many subtle effects in GBA music that will be dropped in the conversion. For example, reverb doesn't sound the same, pan position LFO (an instrument bouncing between the left and right ears) is unsupported in Midi and SF2, etc. Try listening to this [comparison between the opening flute of Sky Tower on a real GBA vs on Midi and SF2](youtubePlaceholder).
+On the other side the GameBoy instruments will sound different because the're emulated using samples. These instruments are quantified in volume and pitch, and there is no way to reproduce this imperfection in the .SF2 standard. Bregalad recorded the samples from a DS in GBA mode.
+The Golden Sun synth instrument, added in version 2.2, also does not sound exactly like its original counterpart, again because it's emulated using samples. The assembly code for those instruments was unrolled and extremely optimised, therefore it was very hard to know exactly how those instruments were designed.
 
 Q: Can I re-use the soundfont to play other MIDIs / Can I use soundfont from Game A to play music from Game B?
 
-A: Yes but unfortunately there is a 99% of chances it will sound like total crap, because very few games have a Gerneral MIDI compliant soundfont. If you're looking for games with partially Genral Midi compliant soundfonts, I know of Golden Sun, my Final Fantasy V and VI hacks, and Castlevania: Aria of Sorrow. (All of these have a lot of missing instruments and some non-General MIDI compilant too so in all cases you'd need some MIDI editing to get the sound you'd expect).
-If you accept however to do some MIDI editing and/or some SoundFont editing manutally, then the answer to both of these questions is of course yes, and GBAMusRipper will probably be a great help.
+A: Yes but unfortunately there is a 99% of chances it will sound like total crap, because very few games have a General MIDI compliant soundfont. If you're looking for games with partially Genral Midi compliant soundfonts, there's Golden Sun and Castlevania: Aria of Sorrow. (All of these have a lot of missing instruments and some non-General MIDI compilant too so in all cases you'd need some MIDI editing to get the sound you'd expect). There are also some romhacks for games that make the sound banks General MIDI compliant.
+If you accept however to do some MIDI editing and/or some SoundFont editing manually, then the answer to both of these questions is of course yes, and GBA Mus Ripper will probably be a great help.
 
 Q: Can I also rip voices/sound effects?
 
@@ -202,64 +247,26 @@ A: Yes absolutely. In fact the engine does not differenciate music, sound effect
 
 Q: The first song/first few songs works fine, but the following songs doesn't work.
 
-A: This is probably a problem with using various sound font banks. You should be sure the driver and MIDI player you use supports banks. It it doesn't work in normal (GS) mode try to use the -xg argument for XG mode maybe you'll get better results.
+A: This is probably a problem with using various sound font banks. You should be sure the driver and MIDI player you use supports banks. If it doesn't work in normal (GS) mode try to use the -xg argument for XG mode maybe you'll get better results.
 
-Q: The songs works usually fine but they sometimes sound wrong
+Q: The drums sound strange
 
-A: Maybe your driver doesn't support the GS message to disable "drums" on midi channel 10. The way I rip the sound font requires that no channel is ever using MDI "drums" (even if there is drums in the song - they'll be mapped to a normal instrument). You should try the -rc (rearrange channels) and/or -xg options.
+A: Maybe your driver doesn't support the GS message to disable "drums" on midi channel 10. The way sound_font_ripper converts the sound bank to soundfont requires that no channel is ever using MIDI "drums" (even if there are drums in the song - they'll be mapped to a normal instrument). You should try the -rc (rearrange channels) and/or -xg options.
 
-Q: Some Game Boy square wave part is missing in some songs in some games.
+<!--Q: Some Game Boy square wave part is missing in some songs in some games.
 
-A: Again this is (sadly) normal. It means there is a supposedly "unused" instrument which in fact is used. The easiest fix is to fix the MIDIs in order to locate the part which don't play and change it's instrument to another equivalent one. Another approach would be to create the preset manually in the Sound Font file by copying another existing equivalent instrument.
+A: Again this is (sadly) normal. It means there is a supposedly "unused" instrument which in fact is used. The easiest fix is to fix the MIDIs in order to locate the part which don't play and change it's instrument to another equivalent one. Another approach would be to create the preset manually in the Sound Font file by copying another existing equivalent instrument. NOTE: I believe this has been fixed -->
 
 Q: Why does it takes so long to rip the songs/soundfont?
 
 A: It really depends on the game. Some games use a different sound bank for every single song, so those games takes a very long time to rip. In all cases it's normal the conversion can't be done instantly.
 
-Q: Can you adapt this ripper to work with Game X which doesn't use the sappy sound engine?
+Q: Can you adapt this ripper to work with Game X which doesn't use the MP2K sound engine?
 
-Q: Can you make this ripper work with GameBoy Color / Nintendo DS / anyother console games?
+Q: Can you make this ripper work with GameBoy Color / Nintendo DS / any other console games?
 
-A: No, because other sound engines works completely differently.
+A: No, because other sound engines work completely differently.
 
-Q: The soundfonts causes major trouble / crashes the program when I'm trying to use it
+Q: The soundfonts cause major trouble / crash the program when I'm trying to use them
 
-A: Some games uses too many different soundbanks for different songs and this causes problems in extreme cases (more than 128 banks). You should use the -sb command to separate sound banks into different folders, which will result in many sound font files instead of a single sound font with many sound banks.
-
----
-
-### Changelog
-
-v1.0 july 2012
-First public release
-
-v1.1 august 2012
-Added -raw and -sb options
-
-v2.0 january 2014
-Major update. The program was completely rewritten in C++ so that it's cleaner, much faster and there is no need for the Java virtual machine anymore.
-Windows users will find pre-compiled .exe files, while linux users will have to compile it manually (see the compile notes).
-Pokemon ROMs are now supported (despite the fact I absolutely loathe pokemons) because I was asked to support them dozen of times.
-Other games that weren't supported like Metroid games can now be ripped manually (see FAQ).
-
-v2.1 january 2014
-A small but significant fix. Prevents instruments from being duplicated if the same instrument is present 2 (or more) times in the ROM, this copy won't be reflected in the Sound Font.
-The bank that overlap are detected and instrument that are already in an other bank are suppressed, so this reduces drastically the # of instruments in games with lots of small banks instead of several large banks.
-
-v2.2 december 2014
-Added support for Golden Sun synth instruments, thanks to ipatix for this one. Note that they do not sound exactly like their original counterpart, unfortunately, just like PSG instrument it's impossible to replicate them 1:1 with the SF2 format.
-Added a new sappy engine searcher by loveemu, more efficient than my own. Fixed a bug in MIDI generation that would cause RPN and NRPN conflicts.
-Fixed a bug with vibrato at the start of tracks (well I hacked a solution to it instead of properly fixing the problem actually).
-
-v2.3 march 2015
-Just a fixes of a few bugs with missing instruments. Pokémon, whose support was broken in 2.2 is again supported.
-
-v2.4 april 2016
-A few bugfixes, BDPCM compressed samples are supported
-
-v3.3 march 2018
-Improve the detection of sappy engine by adding the 2nd definition for recompiled libraries (fixes MMBN6, Mother 3, etc)
-
-v3.4 September 2020
-The C/C++ code files for the previous version were found on jpmac26's Github account and recompiled to make updated .exe files. The instructions for working with `gba-mus-ripper.exe` have been made clearer, including instructions for adding Command Prompt into any folder on Windows.
-Several small bugs have also been fixed.
+A: Some games uses too many different soundbanks for different songs and this causes problems in extreme cases (more than 128 banks). You should use the -sb command to separate sound banks into different folders, which will result in many soundfont files instead of a single soundfont with many sound banks.

@@ -16,7 +16,7 @@
 #include <utility>
 extern FILE *inGBA;					// Related .gba file
 
-void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zone){
+void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zone){ // TODO: add a modulator that changes how the midi volume cc affects volume. The goal is to have the sf2 accurately match the GBA's volume *without* using the lv option in song_ripper (the lv option changes the volume events in a way that I think is lossy)
 	SFModulator modDepthIncUniLinMod(SFMidiController::kModulationDepth,
 			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
 			SFControllerType::kLinear);

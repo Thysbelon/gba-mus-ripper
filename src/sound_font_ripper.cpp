@@ -43,6 +43,7 @@ static unsigned int current_address;
 static unsigned int current_bank;
 static unsigned int current_instrument;
 static unsigned int main_volume = 15;
+static bool dry = false;
 
 //static SF2 *sf2;
 SoundFont sf2base;
@@ -62,6 +63,7 @@ static void print_instructions()
 		"-s  : Sampling rate for samples. Default: 22050 Hz\n"
 		"-gm : Give General MIDI names to presets. Note that this will only change the names and will NOT magically turn the soundfont into a General MIDI compliant soundfont.\n"
 		"-mv : Main volume for sample instruments. Range: 1-15. Game Boy channels are unnaffected.\n"
+		"-dry : Run the program without writing any files. Useful for developers testing the program.\n"
 	);
 	exit(0);
 }
@@ -515,7 +517,7 @@ static void parse_arguments(const int argc, char *const argv[])
 		// Enable verbose if -v flag encountered in arguments list
 		if (argv[i][0] == '-')
 		{
-			if (!strcmp(argv[i], "-v"))
+			if (strcmp(argv[i], "-v") == 0)
 			{
 				verbose_flag = true;
 
@@ -555,10 +557,13 @@ static void parse_arguments(const int argc, char *const argv[])
 				}
 				main_volume = volume;
 			}
-			else if (!strcmp(argv[i], "-gm"))
+			else if (strcmp(argv[i], "-gm") == 0)
 				gm_preset_names = true;
+			
+			else if (strcmp(argv[i], "-dry") == 0)
+				dry = true;
 
-			else if (!strcmp(argv[i], "--help"))
+			else if (strcmp(argv[i], "--help") == 0)
 				print_instructions();
 		}
 
@@ -723,14 +728,11 @@ int main(const int argc, char *const argv[])
 
 	printf("Dump complete, now outputting SF2 data...\n");
 
-	std::ofstream outSF2(out_path, std::ios::binary);
-	//puts("sf2->Write...");
-	sf2->Write(outSF2);
-	//puts("sf2->Write complete");
+	if (!dry){
+		std::ofstream outSF2(out_path, std::ios::binary);
+		sf2->Write(outSF2);
+	}
 	delete instruments;
-	//puts("deleting sf2...");
-	//delete sf2;
-	//puts("sf2 deleted");
 
 	// Close files
 	fclose(inGBA);
