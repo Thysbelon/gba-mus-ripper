@@ -168,7 +168,8 @@ Use `git clone --recurse-submodules https://github.com/Thysbelon/gba-mus-ripper.
 
 Or, if you already cloned the repository, run `git submodule update --init --recursive` to fetch submodules.
 
-<!--First, you should edit the Makefile (don't worry it's a very simple one) to suit your needs (compiler, flags, etc...). -->You need support for C++11, this means if you're using gcc you're going to need a version more recent than 4.8. It's probably compilable on 4.7.x but it's simpler to just update the compiler.
+<!--First, you should edit the Makefile (don't worry it's a very simple one) to suit your needs (compiler, flags, etc...).-->
+You need support for C++11, this means if you're using gcc you're going to need a version more recent than 4.8. It's probably compilable on 4.7.x but it's simpler to just update the compiler.
 
 There are separate Makefiles for different platforms. The default Makefile is for Linux. Makefile-windows is for compiling on Windows. Makefile-windows-[x86/aarch64]-on-ubuntu is for cross-compiling to Windows on Linux. Both Windows native and cross compilation use the compiler [llvm-mingw](https://github.com/mstorsjo/llvm-mingw), because it is a portable download that requires little set-up.
 
