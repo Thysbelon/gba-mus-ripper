@@ -109,7 +109,7 @@ Usage: `song_ripper infile.gba outfile.mid song_address [flags]`
 
 In general MIDI, midi channel 10 is reserved for drums. Unfortunately, we do not want to use any "drums" in the output file. There are 3 modes to fix this problem:
 
-`-rc` : Rearrange Channels. This will avoid using the channel 10, and use it at last ressort only if all 16 channels should be used
+`-rc` : Rearrange Channels. This will avoid using the channel 10, and use it at last resort only if all 16 channels should be used
 
 `-gs` : This will send a GS system exclusive message to tell the player channel 10 is not "drums"
 
@@ -127,13 +127,13 @@ For example, there is no Midi CC that is labelled as a way to control the speed 
 
 A list of all special undefined midi CCs, and what they are set to control, is listed below.
 
-**NOTICE: a lot of SF2 synthesizer daw plugins (vst, lv2)** ***do not*** **support modulators.** Please use one of the options listed in the section "Playback converted MIDIs".
+**NOTICE: a lot of SF2 synthesizer daw plugins (vst, lv2)** ***do not*** **support modulators.** Please use one of the options listed in the section ["Playback converted MIDIs"](#playback-converted-midis).
 
 - CC21: LFO speed. The higher the number, the faster that LFO (vibrato or tremolo) will be. Takes the place of the MP2K event LFOS. If you'd like to see exactly how LFOS or CC21 relates to LFO speed, please refer to this [simple LFOS-CC21-Hertz Comparison webapp I made](https://thysbelon.github.io/gba-mus-ripper/mp2k-LFO-speed-and-sf2-LFO-speed-comparison.html).
 - CC115: LFO speed in MP2K is determined by both the LFOS setting *and* the current BPM. There is no way for an SF2 modulator to read the current BPM of the Midi file, so instead a CC115 is placed on every track every time there is a BPM change in order to keep the LFO speed accurate to MP2K. The value of CC115 is the BPM divided by 4 (Midi CCs can only store a limited range of numbers).
 - CC26: LFO delay. When this is greater than zero, every time a note plays, there will be a delay before LFO starts. The higher the number, the greater the delay.
 - CC110: The first of two Midi CCs that take the place of MP2K MODT. MP2K MODT is a single event that determines if the LFO will be pitch (vibrato), volume (tremolo), or pan position (autopan). Because of the limitations of SF2 modulators, we need a separate CC to enable and disable each of these LFO types. CC110 controls pitch (vibrato) LFO type. **When CC110 is 0, pitch LFO type is enabled; when CC110 is 127 (max), pitch LFO type is disabled**. On MP2K, when no MODT event is used, LFO type defaults to pitch; using 0 as the "on" value for CC110 ensures the same is true in Midi and SF2.
-- CC111: The second of two Midi CCs that take the place of MP2K MODT. CC111 controls volume (tremolo) LFO type. **When CC111 is 127, volume LFO type is enabled; when CC110 is 0, volume LFO type is disabled**. The reason the on and off values for CC110 and CC111 are different is to ensure that if neither CC110 or CC111 is set, the Midi and SF2 will default to pitch LFO type just like MP2K.  
+- CC111: The second of two Midi CCs that take the place of MP2K MODT. CC111 controls volume (tremolo) LFO type. **When CC111 is 127, volume LFO type is enabled; when CC111 is 0, volume LFO type is disabled**. The reason the on and off values for CC110 and CC111 are different is to ensure that if neither CC110 or CC111 is set, the Midi and SF2 will default to pitch LFO type just like MP2K.  
 Although Midi makes it possible to enable 2 kinds of LFO at the same time, please do not do this because it is not accurate to MP2K and it will cause issues if you try to run the Midi through [Midi2AGB](https://github.com/Thysbelon/midi2agb).  
 In order for a Midi to successfully be converted by [Midi2AGB](https://github.com/Thysbelon/midi2agb), CC110 and CC111 *must* be grouped together, and the order of them must be CC110 *then* CC111.  
 There is no Midi CC to set LFO type to pan position because it is impossible to do this with SF2 modulators. Whenever there is pan position LFO in an MP2K song, song_ripper will use CC110 and CC111 to disable pitch and volume LFO.
@@ -259,7 +259,7 @@ On the other side, there might be fake positives, that is cases where the detect
 
 Q: Will it sound EXACTLY like on the GBA?
 
-A: No. It will sound close, but it is impossible to recreate GBA sound exactly with Midi and SF2. Though the Midi and SF2 may sound "better" in a sense due to not having the GBA's white noise, there are many subtle effects in GBA music that will be dropped in the conversion. For example, reverb doesn't sound the same, pan position LFO (an instrument bouncing between the left and right ears) is unsupported in Midi and SF2, etc.<!-- Try listening to this [comparison between the opening flute of Sky Tower on a real GBA vs on Midi and SF2](youtubePlaceholder). TODO: record this -->
+A: No. It will sound close, but it is impossible to recreate GBA sound exactly with Midi and SF2. Though the Midi and SF2 may sound "better" in a sense due to not having the GBA's white noise, there are many subtle effects in GBA music that will be dropped in the conversion. For example: reverb doesn't sound the same, pan position LFO (an instrument bouncing between the left and right ears) is unsupported in Midi and SF2, etc.<!-- Try listening to this [comparison between the opening flute of Sky Tower on a real GBA vs on Midi and SF2](youtubePlaceholder). TODO: record this -->
 
 The GameBoy instruments will sound different because the're emulated using samples. These instruments are quantified in volume and pitch, and there is no way to reproduce this imperfection in the .SF2 standard. Bregalad recorded the samples from a DS in GBA mode.
 
