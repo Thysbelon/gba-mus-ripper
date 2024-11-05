@@ -16,9 +16,9 @@ WHOLE=-s -fwhole-program -static
 
 SF2CUTE_SRC_FILES = src/sf2cute/src/sf2cute/$(wildcard *.cpp) # TODO include *.hpp files too?
 
-all: $(shell mkdir build) $(shell mkdir bin) bin/mp2ktools bin/song_ripper bin/sound_font_ripper bin/gba_mus_ripper
+all: $(shell mkdir build) $(shell mkdir bin) bin/mp2ktool bin/song_ripper bin/sound_font_ripper bin/gba_mus_ripper
 
-bin/mp2ktools: src/mp2ktool/mp2ktool.cpp src/mp2ktool/mp2kcomm.cpp src/mp2ktool/agbm4a.cpp src/mp2ktool/mp2kcomm.h src/mp2ktool/agbm4a.h
+bin/mp2ktool: src/mp2ktool/mp2ktool.cpp src/mp2ktool/mp2kcomm.cpp src/mp2ktool/agbm4a.cpp src/mp2ktool/mp2kcomm.h src/mp2ktool/agbm4a.h
 	$(CPPC2) src/mp2ktool/mp2ktool.cpp src/mp2ktool/mp2kcomm.cpp src/mp2ktool/agbm4a.cpp -o bin/mp2ktool
 
 bin/song_ripper: src/song_ripper.cpp src/midi.hpp build/midi.o

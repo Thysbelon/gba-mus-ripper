@@ -119,6 +119,30 @@ In general MIDI, midi channel 10 is reserved for drums. Unfortunately, we do not
 
 <!--`-sv` : Simulate vibrato. This will insert controllers in real time to simulate a vibrato, instead of just when commands are given. Like -lv, this should be used to have the output "sound" like the original song,but shouldn't be used to get an exact dump of sequence data.-->
 
+#### Explanation of Special MP2K Midi CCs
+
+Not all the features of MP2K are supported in the default midi spec, so song_ripper assigns these MP2K events to undefined Midi CCs, then modulators in the SF2 file allow these CCs to have the same effect as on MP2K.
+
+For example, there is no Midi CC that is labelled as a way to control the speed of LFO (vibrato or tremolo), but MP2K has an LFOS event that is used to control the speed of LFO. To make the midi and SF2 more accurate to hardware, LFOS events in MP2K are converted to undefined CC21 events, and a modulator in the SF2 file uses CC21 as an input to control the LFO speed.
+
+A list of all special undefined midi CCs, and what they are set to control, is listed below.
+
+- CC21: LFO speed. The higher the number, the faster that LFO (vibrato or tremolo) will be. If you'd like to see exactly how LFOS or CC21 relates to LFO speed, please refer to this [simple LFOS-CC21-Hertz-Comparison webapp I made](https://thysbelon.github.io/gba-mus-ripper/mp2k-LFO-speed-and-sf2-LFO-speed-comparison.html).
+- CC115: LFO speed in MP2K is determined by both the LFOS setting *and* the current BPM. There is no way for an SF2 modulator to read the current BPM of the Midi file, so instead a CC115 is placed on every track every time there is a BPM change in order to keep the LFO speed accurate to MP2K. The value of CC115 is the BPM divided by 4 (Midi CCs can only store a limited range of numbers).
+- CC26: LFO delay. When this is greater than zero, then every time a note plays, there will be a delay before LFO starts. The higher the number, the greater the delay.
+- CC110: The first of two Midi CCs that take the place of MP2K MODT. MP2K MODT is a single event that determines if the LFO will be pitch (vibrato), volume (tremolo), or pan position (autopan). Because of the limitations of SF2 modulators, we need a separate CC to enable and disable each of these LFO types. CC110 controls pitch (vibrato) LFO type. **When CC110 is 0, pitch LFO type is enabled; when CC110 is 127 (max), pitch LFO type is disabled**. On MP2K, when no MODT event is used, LFO type defaults to pitch; using 0 as the "on" value for CC110 ensures the same is true in Midi and SF2.
+- CC111: The second of two Midi CCs that take the place of MP2K MODT. CC111 controls volume (tremolo) LFO type. **When CC111 is 127, volume LFO type is enabled; when CC110 is 0, volume LFO type is disabled**. The reason the on and off values for CC110 and CC111 are different is to ensure that if neither CC110 or CC111 is set, the Midi and SF2 will default to pitch LFO type just like MP2K.  
+Although Midi makes it possible to enable 2 kinds of LFO at the same time, please do not do this because it is not accurate to MP2K and it will cause issues if you try to run the Midi through [Midi2AGB](https://github.com/Thysbelon/midi2agb).  
+In order for a Midi to successfully be converted by [Midi2AGB](https://github.com/Thysbelon/midi2agb), CC110 and CC111 *must* be grouped together, and the order of them must be CC110 *then* CC111.  
+There is no Midi CC to set LFO type to pan position because it is impossible to do this with SF2 modulators. Whenever there is pan position LFO in an MP2K song, song_ripper will use CC110 and CC111 to disable pitch and volume LFO.
+- CC24: Detune. This doesn't have any effect on the sound of the Midi and SF2, as an RPN 1 event is used to do detune instead. CC24 is still important if you plan on converting your Midi into MP2K, as only CC24 will be detected by Midi2AGB. A value of 64 is normal pitch, 0 is one semitone lower, and 127 is one semitone higher.
+- "rev=???": This is a text event that controls what the global reverb of the song will be after being converted by Midi2AGB. It has no effect on the sound of the Midi and SF2.
+- "pri=???": This is a text event that controls what the global priority of the song will be after being converted by Midi2AGB. Priority is a setting used by a GBA game engine to determine whether or not sound effects should interrupt this song. It has no effect on the sound of the Midi and SF2.
+
+#### Explanation of RPN Events
+
+[RecordingBlogs' explanation of RPN](https://www.recordingblogs.com/wiki/midi-registered-parameter-number-rpn)
+
 ### 4) Sound Font Ripper
 
 Dumps a sound bank (or a list of sound banks) from a GBA game which is using the MP2K sound engine to SoundFont 2 (.sf2) format. You'd typically use this to get a SoundFont dump of data within a GBA game directly without dumping any other data.

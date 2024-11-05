@@ -104,7 +104,7 @@ static uint32_t getSoundTable(std::string prg_prefix, std::string inGBA_path){
 	return x;
 }
 
-static std::pair<int, int> testSampleRateAndVolValidity(uint32_t paramAddress){ // TODO: return Vol as well?
+static std::pair<int, int> testSampleRateAndVolValidity(uint32_t paramAddress){ // adapted from sappy_detector.c
 	const uint8_t testNums[] = {16/*for most games*/, 32/*for pokemon/gamefreak*/};
 	for (int i=0; i<2; i++){
 		fseek(inGBA, paramAddress - testNums[i], SEEK_SET);
@@ -139,23 +139,27 @@ static std::pair<int, int> testSampleRateAndVolValidity(uint32_t paramAddress){ 
 static std::pair<int, int> getSampleRateIndexAndVol(std::string prg_prefix, std::string inGBA_path){
 	std::string mp2ktoolCmd = prg_prefix + "mp2ktool info \"" + inGBA_path + "\"";
 	printf("DEBUG: going to call popen(%s)\n", mp2ktoolCmd.c_str());
-	FILE *mp2ktoolFile = popen(mp2ktoolCmd.c_str(), "r");
+	FILE *mp2ktoolOutput = popen(mp2ktoolCmd.c_str(), "r");
 
-	if (!mp2ktoolFile){
+	if (!mp2ktoolOutput){
 		return std::make_pair(0,0);
 	}
 
 	char buffer[1024];
 	for (int i=0; i<6; i++){ // skip 6 lines
-		fgets(buffer, sizeof(buffer), mp2ktoolFile);
+		fgets(buffer, sizeof(buffer), mp2ktoolOutput);
 	}
-	char *line = fgets(buffer, sizeof(buffer), mp2ktoolFile);
+	char *line = fgets(buffer, sizeof(buffer), mp2ktoolOutput);
+	//printf("line: %s\n", line);
 	std::string stringLine(line);
 	// "m4a_main                "
 	stringLine.erase(0,24);
-	if (stringLine=="null"){
+	//printf("stringLine after erase: %s[END OF STRING]\n", stringLine.c_str());
+	if (stringLine=="null\n"){
 		printf("address of sound engine could not be found.\n");
-		pclose(mp2ktoolFile);
+		pclose(mp2ktoolOutput);
+		return std::make_pair(0,0);
+		
 		// TODO: link this program with a yaml parsing library; at this line, when mp2ktool can't find the sound engine, search VG Music Studio's MP2K.yaml for the game's sample rate.
 		// code that VG Music Studio uses to get the GameCode and version for searching in MP2K.yaml (addresses are absolute, not relative):
 		// GameCode = Reader.ReadString(4, false, 0xAC);
@@ -169,11 +173,10 @@ static std::pair<int, int> getSampleRateIndexAndVol(std::string prg_prefix, std:
 		fread(&version, 1, 1, inGBA);
 		printf("version: %i\n", version);
 		// yaml reading here
-		return std::make_pair(0,0);
 	}
 	uint32_t sound_engine_adr = std::stoul(stringLine, nullptr, 16); // https://stackoverflow.com/questions/1070497/c-convert-hex-string-to-signed-integer
 	printf("sound_engine_adr: 0x%08x\n", sound_engine_adr); // https://stackoverflow.com/questions/14733761/printf-formatting-for-hexadecimal
-	pclose(mp2ktoolFile);
+	pclose(mp2ktoolOutput);
 	
 	/* Test validity of engine offset with -16 and -32 */
 	std::pair<int, int> sampleRateIndexAndVol = testSampleRateAndVolValidity(sound_engine_adr);
@@ -320,7 +323,7 @@ int main(int argc, char *const argv[])
 	
 	// attempt to get sample rate
 	std::pair<int, int> sampleRateIndexAndVol = getSampleRateIndexAndVol(prg_prefix, inGBA_path);
-	sample_rate = sample_rates[sampleRateIndexAndVol.first];
+	sample_rate = sampleRateIndexAndVol.first != 0 ? sample_rates[sampleRateIndexAndVol.first] : 0;
 	main_volume = sampleRateIndexAndVol.second;
 
 	// Create a directory named like the input ROM, without the .gba extension
