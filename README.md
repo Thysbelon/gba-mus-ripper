@@ -127,9 +127,11 @@ For example, there is no Midi CC that is labelled as a way to control the speed 
 
 A list of all special undefined midi CCs, and what they are set to control, is listed below.
 
-- CC21: LFO speed. The higher the number, the faster that LFO (vibrato or tremolo) will be. If you'd like to see exactly how LFOS or CC21 relates to LFO speed, please refer to this [simple LFOS-CC21-Hertz-Comparison webapp I made](https://thysbelon.github.io/gba-mus-ripper/mp2k-LFO-speed-and-sf2-LFO-speed-comparison.html).
+**NOTICE: a lot of SF2 synthesizer daw plugins (vst, lv2)** ***do not*** **support modulators.** Please use one of the options listed in the section "Playback converted MIDIs".
+
+- CC21: LFO speed. The higher the number, the faster that LFO (vibrato or tremolo) will be. Takes the place of the MP2K event LFOS. If you'd like to see exactly how LFOS or CC21 relates to LFO speed, please refer to this [simple LFOS-CC21-Hertz Comparison webapp I made](https://thysbelon.github.io/gba-mus-ripper/mp2k-LFO-speed-and-sf2-LFO-speed-comparison.html).
 - CC115: LFO speed in MP2K is determined by both the LFOS setting *and* the current BPM. There is no way for an SF2 modulator to read the current BPM of the Midi file, so instead a CC115 is placed on every track every time there is a BPM change in order to keep the LFO speed accurate to MP2K. The value of CC115 is the BPM divided by 4 (Midi CCs can only store a limited range of numbers).
-- CC26: LFO delay. When this is greater than zero, then every time a note plays, there will be a delay before LFO starts. The higher the number, the greater the delay.
+- CC26: LFO delay. When this is greater than zero, every time a note plays, there will be a delay before LFO starts. The higher the number, the greater the delay.
 - CC110: The first of two Midi CCs that take the place of MP2K MODT. MP2K MODT is a single event that determines if the LFO will be pitch (vibrato), volume (tremolo), or pan position (autopan). Because of the limitations of SF2 modulators, we need a separate CC to enable and disable each of these LFO types. CC110 controls pitch (vibrato) LFO type. **When CC110 is 0, pitch LFO type is enabled; when CC110 is 127 (max), pitch LFO type is disabled**. On MP2K, when no MODT event is used, LFO type defaults to pitch; using 0 as the "on" value for CC110 ensures the same is true in Midi and SF2.
 - CC111: The second of two Midi CCs that take the place of MP2K MODT. CC111 controls volume (tremolo) LFO type. **When CC111 is 127, volume LFO type is enabled; when CC110 is 0, volume LFO type is disabled**. The reason the on and off values for CC110 and CC111 are different is to ensure that if neither CC110 or CC111 is set, the Midi and SF2 will default to pitch LFO type just like MP2K.  
 Although Midi makes it possible to enable 2 kinds of LFO at the same time, please do not do this because it is not accurate to MP2K and it will cause issues if you try to run the Midi through [Midi2AGB](https://github.com/Thysbelon/midi2agb).  
@@ -277,9 +279,9 @@ Q: The first song/first few songs works fine, but the following songs doesn't wo
 
 A: This is probably a problem with using various sound font banks. You should be sure the driver and MIDI player you use supports banks. If it doesn't work in normal (GS) mode try to use the -xg argument for XG mode maybe you'll get better results.
 
-Q: The drums sound strange
+Q: The song is mostly fine, but one track sounds weird/is missing
 
-A: Maybe your driver doesn't support the GS message to disable "drums" on midi channel 10. The way sound_font_ripper converts the sound bank to soundfont requires that no channel is ever using MIDI "drums" (even if there are drums in the song - they'll be mapped to a normal instrument). You should try the -rc (rearrange channels) and/or -xg options.
+A: Maybe your driver doesn't support the GS message to disable "drums" on midi channel 10. The way sound_font_ripper converts the sound bank to soundfont requires that no channel is ever using MIDI "drums" (even if there are drums in the song - they'll be mapped to a normal instrument). You should try the `-rc` (rearrange channels) and/or `-xg` options.
 
 <!--Q: Some Game Boy square wave part is missing in some songs in some games.
 

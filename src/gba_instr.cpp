@@ -280,6 +280,8 @@ std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_every_keysplit_ins
 	inst_it it = inst_map.find(inst);
 	if (it != inst_map.end()) return (*it).second;
 
+	//printf("GBAInstr default_sample_rate: %i\n", default_sample_rate);
+	
 	// I'm sorry for doing a dumb copy/pase of the routine right above
 	// But there was too much differences to handles to practically handle it with flags
 	// therefore I didn't really had a choice.

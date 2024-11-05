@@ -349,6 +349,8 @@ std::pair< uint32_t, std::vector< std::shared_ptr<SFSample> > > GBASamples::buil
 //Build white noise sample
 std::pair< uint32_t, std::vector< std::shared_ptr<SFSample> > > GBASamples::build_noise_sample(bool metallic, int key)
 {
+	//printf("GBASamples default_sample_rate: %i\n", default_sample_rate);
+	
 	//prevent out of range keys
 	if (key < 42) key = 42;
 	if (key > 77) key = 76;

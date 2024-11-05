@@ -644,6 +644,7 @@ int main(const int argc, char *const argv[])
 	//puts("setting sound_engine...");
 	sf2->set_sound_engine("EMU8000");
 	//puts("sound engine set");
+	//printf("creating instruments with a sample_rate of %i\n", sample_rate);
 	instruments = new GBAInstr(sf2, sample_rate); // TEST sample_rate
 	
 	// Attempt to access psg_data file

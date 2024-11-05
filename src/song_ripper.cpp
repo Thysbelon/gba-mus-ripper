@@ -546,6 +546,7 @@ static void process_event(int track, int track_amnt)
 				// This shouldn't adversely affect midi2agb, because that program ignores all RPN events other than pitch bend range changes.
 				// Needs TESTING
 				midi.add_RPN(track, 1, arg1>0x40 ? (int16_t)round(((float)arg1 / 0x7F) * 0x3FFF) : (int16_t)round(((float)arg1 / 0x40) * 0x2000) );
+				// NEW TODO: Use a modulator to have CC24 change pitch. Be careful and make sure that the way CC24 interacts with pitch bends in Midi and SF2 is accurate to how TUNE interacts with BEND in MP2K
 			return;
 
 		// Key off
