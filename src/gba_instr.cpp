@@ -16,7 +16,9 @@
 #include <utility>
 extern FILE *inGBA;					// Related .gba file
 
-void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zone){ // TODO: add a modulator that changes how the midi volume cc affects volume. The goal is to have the sf2 accurately match the GBA's volume *without* using the lv option in song_ripper (the lv option changes the volume events in a way that I think is lossy)
+void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zone, uint8_t otherMods){
+	// TODO: analyze MP2K MOD (LFO depth) and make a modulator to make midi and SF2 more accurate if necessary.
+	
 	SFModulator modDepthIncUniLinMod(SFMidiController::kModulationDepth,
 			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
 			SFControllerType::kLinear);
@@ -35,7 +37,7 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 	
 	int LFOspeedLFOSamount = 9572;
 	int LFOspeedBPMamount = -10793;
-	int LFOspeedAdjustAmount = -4887; // optimized for 35 LFO and 116 BPM
+	int LFOspeedAdjustAmount = -4887; // optimized for 35 LFOS and 116 BPM
 	int LFOdelayAmount = 15000;
 	
 	// override the default pitch modulator for CC1 to prevent unnecessary vibrato where the original song had panpot or volume modulation. https://www.mail-archive.com/fluid-dev@nongnu.org/msg05330.html
@@ -94,6 +96,48 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 		LFOdelayAmount,
 		SFModulator(0),
 		SFTransform::kLinear));
+	
+	if ((otherMods & 0b00000001) == 0b00000001) {
+		// volume modulator // lines up with lv almost perfectly EXCEPT for an MP2K VOL of 0
+		global_instrument_zone->SetModulator(SFModulatorItem(
+				SFModulator(SFMidiController::kChannelVolume,
+				SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
+				SFControllerType::kConcave),
+			SFGenerator::kInitialAttenuation,
+			480,
+			SFModulator(0),
+			SFTransform::kLinear));
+	}
+	if ((otherMods & 0b00000010) == 0b00000010) {
+		// disble default reverb modulator 
+		global_instrument_zone->SetModulator(SFModulatorItem(
+				SFModulator(SFMidiController::kReverbSendLevel,
+				SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+				SFControllerType::kLinear),
+			SFGenerator::kReverbEffectsSend,
+			0,
+			SFModulator(0),
+			SFTransform::kLinear));
+		
+		// new reverb modulator 1
+		global_instrument_zone->SetModulator(SFModulatorItem(
+				SFModulator(SFMidiController::kReverbSendLevel,
+				SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
+				SFControllerType::kConvex),
+			SFGenerator::kReverbEffectsSend,
+			200,
+			SFModulator(0),
+			SFTransform::kLinear));
+		// new reverb modulator 2
+		global_instrument_zone->SetModulator(SFModulatorItem(
+				SFModulator(SFMidiController::kReverbSendLevel,
+				SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
+				SFControllerType::kLinear),
+			SFGenerator::kReverbEffectsSend,
+			-60,
+			SFModulator(0),
+			SFTransform::kLinear));
+	}
 }
 
 bool operator <(const inst_data&i, const inst_data& j)
@@ -253,7 +297,7 @@ std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_sampled_instrument
 	
 	// set various modulators to more accurately match GBA output. TODO: make these -raw only?
 	SFInstrumentZone global_instrument_zone;
-	addModulatorsToGlobalZone(&global_instrument_zone);
+	addModulatorsToGlobalZone(&global_instrument_zone, otherMods);
 	new_instrument.set_global_zone(global_instrument_zone);
 	
 	// finish making instrument and insert into sf2 (I think the old library sf2.cpp did this automatically)
@@ -292,7 +336,7 @@ std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_every_keysplit_ins
 	
 	// START LFO MODULATORS
 	SFInstrumentZone global_instrument_zone;
-	addModulatorsToGlobalZone(&global_instrument_zone);
+	addModulatorsToGlobalZone(&global_instrument_zone, otherMods);
 	new_instrument.set_global_zone(global_instrument_zone);	
 	// END LFO MODULATORS
 
@@ -451,7 +495,7 @@ std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_keysplit_instrumen
 	
 	// START LFO MODULATORS
 	SFInstrumentZone global_instrument_zone;
-	addModulatorsToGlobalZone(&global_instrument_zone);
+	addModulatorsToGlobalZone(&global_instrument_zone, otherMods);
 	new_instrument.set_global_zone(global_instrument_zone);
 	// END LFO MODULATORS
 
@@ -578,7 +622,7 @@ std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_GB3_instrument(con
 	SFInstrumentZone instrument_zone;
 	generate_psg_adsr_generators(inst.word2, &instrument_zone); // looking at the global instrument zone in polyphone, there are no adsr settings, so this statement doesn't do anything? The same is true of both sf2.cpp and sf2cute.
 	//new_instrument.AddZone(instrument_zone);
-	addModulatorsToGlobalZone(&instrument_zone);
+	addModulatorsToGlobalZone(&instrument_zone, otherMods);
 	new_instrument.set_global_zone(instrument_zone);
 
 	int myNum[8] = {0, 52, 53, 64, 65, 76, 77, 127};
@@ -663,7 +707,7 @@ std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_pulse_instrument(c
 	//sf2->add_new_inst_bag();
 	SFInstrumentZone instrument_zone;
 	generate_psg_adsr_generators(inst.word2, &instrument_zone);
-	addModulatorsToGlobalZone(&instrument_zone);
+	addModulatorsToGlobalZone(&instrument_zone, otherMods);
 	new_instrument.set_global_zone(instrument_zone);
 
 	int myNum[10] = {0, 45, 46, 57, 58, 69, 70, 81, 82, 127};
@@ -727,7 +771,7 @@ std::pair<int, std::shared_ptr<SFInstrument>> GBAInstr::build_noise_instrument(c
 	//generate_psg_adsr_generators(inst.word2);
 	SFInstrumentZone instrument_zone;
 	generate_psg_adsr_generators(inst.word2, &instrument_zone);
-	addModulatorsToGlobalZone(&instrument_zone);
+	addModulatorsToGlobalZone(&instrument_zone, otherMods);
 	new_instrument.set_global_zone(instrument_zone);
 
 	//sf2->add_new_inst_bag();

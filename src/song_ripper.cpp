@@ -729,6 +729,11 @@ int main(int argc, char *argv[])
 		snprintf(priMarker, 8, "pri=%d", priority);
 		midi.add_marker(priMarker);
 	}
+	if (lv){
+		midi.add_marker("nat=1");
+	} else {
+		midi.add_marker("nat=0");
+	}
 
 	int instr_bank_address = get_GBA_pointer();
 

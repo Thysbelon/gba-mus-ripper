@@ -31,12 +31,14 @@ class GBAInstr
 // private:
 	int cur_inst_index;
 	unsigned int default_sample_rate; // sf2cute doesn't have a feature to define a default sample rate for the soundfont, so have the sample_rate as a property of this class instead.
+	//bool atmod;
+	uint8_t otherMods;
 	//std::map<inst_data, int> inst_map;	// Contains pointers to instruments within GBA file, their position is the # of instrument in the SF2
 	std::map<inst_data, std::pair<int, std::shared_ptr<SFInstrument>>> inst_map;
 	SoundFont *sf2; //SF2 *sf2;										// Related .sf2 file
 	GBASamples samples;								// Related samples class
 
-	void addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zone);
+	void addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zone, uint8_t otherMods);
 	// Convert pointer from GBA memory map to ROM memory map
 	uint32_t get_GBA_pointer();
 	// Apply ADSR envelope on the instrument
@@ -44,7 +46,7 @@ class GBAInstr
 	void generate_psg_adsr_generators(const uint32_t adsr, SFInstrumentZone* instrument_zone); //void generate_psg_adsr_generators(const uint32_t adsr);
 
 public:
-	GBAInstr(/*SF2 *sf2*/ SoundFont *sf2, unsigned int sample_rate=22050) : cur_inst_index(0), sf2(sf2), samples(sf2, sample_rate), default_sample_rate(sample_rate) // NEEDS TESTING
+	GBAInstr(/*SF2 *sf2*/ SoundFont *sf2, unsigned int sample_rate=22050, uint8_t otherMods=0) : cur_inst_index(0), sf2(sf2), samples(sf2, sample_rate), default_sample_rate(sample_rate), otherMods(otherMods)
 	{}
 
 	//Build a SF2 instrument form a GBA sampled instrument

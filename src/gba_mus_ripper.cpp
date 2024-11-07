@@ -471,6 +471,7 @@ int main(int argc, char *const argv[])
 			if (sample_rate) sf_rip_args += " -s" + std::to_string(sample_rate);
 			if (main_volume)	sf_rip_args += " -mv" + std::to_string(main_volume);
 			if (gm) sf_rip_args += " -gm";
+			if (raw) sf_rip_args += " -atmod -revmod";
 			if (dry) sf_rip_args += " -dry";
 			sf_rip_args += " 0x" + hex(*j);
 			
@@ -496,6 +497,7 @@ int main(int argc, char *const argv[])
 		if (main_volume) sf_rip_args += " -mv" + std::to_string(main_volume);
 		// Pass -gm argument if necessary
 		if (gm) sf_rip_args += " -gm";
+		if (raw) sf_rip_args += " -atmod -revmod";
 		if (dry) sf_rip_args += " -dry";
 
 		// Make sound banks addresses list.

@@ -43,6 +43,8 @@ static unsigned int current_address;
 static unsigned int current_bank;
 static unsigned int current_instrument;
 static unsigned int main_volume = 15;
+static bool atmod = false;
+static bool revmod = false;
 static bool dry = false;
 
 //static SF2 *sf2;
@@ -63,6 +65,8 @@ static void print_instructions()
 		"-s  : Sampling rate for samples. Default: 22050 Hz\n"
 		"-gm : Give General MIDI names to presets. Note that this will only change the names and will NOT magically turn the soundfont into a General MIDI compliant soundfont.\n"
 		"-mv : Main volume for sample instruments. Range: 1-15. Game Boy channels are unnaffected.\n"
+		"-atmod : Override default volume modulator to more accurately match MP2K.\n" // will be set by gba_mus_ripper when -raw is used. WILL NOT be used with song_ripper -lv.
+		"-revmod : Override default reverb modulator to more accurately match MP2K.\n"
 		"-dry : Run the program without writing any files. Useful for developers testing the program.\n"
 	);
 	exit(0);
@@ -560,6 +564,12 @@ static void parse_arguments(const int argc, char *const argv[])
 			else if (strcmp(argv[i], "-gm") == 0)
 				gm_preset_names = true;
 			
+			else if (strcmp(argv[i], "-atmod") == 0)
+				atmod = true;
+			
+			else if (strcmp(argv[i], "-revmod") == 0)
+				revmod = true;
+			
 			else if (strcmp(argv[i], "-dry") == 0)
 				dry = true;
 
@@ -645,7 +655,10 @@ int main(const int argc, char *const argv[])
 	sf2->set_sound_engine("EMU8000");
 	//puts("sound engine set");
 	//printf("creating instruments with a sample_rate of %i\n", sample_rate);
-	instruments = new GBAInstr(sf2, sample_rate); // TEST sample_rate
+	uint8_t otherMods=0; // flags to set atmod and revmod.
+	if (atmod) otherMods += 0b00000001;
+	if (revmod) otherMods += 0b00000010;
+	instruments = new GBAInstr(sf2, sample_rate, otherMods);
 	
 	// Attempt to access psg_data file
 	psg_data = fopen((prg_prefix + "./psg_data.raw").c_str(), "rb");
