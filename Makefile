@@ -15,6 +15,7 @@ FLAGS=-Wall -fdata-sections -ffunction-sections -fmax-errors=5 -Os
 WHOLE=-s -fwhole-program -static
 
 SF2CUTE_SRC_FILES = src/sf2cute/src/sf2cute/$(wildcard *.cpp) # TODO include *.hpp files too?
+YAMLCPP_SRC_FILES = src/yaml-cpp/src/$(wildcard *.cpp)
 
 all: $(shell mkdir build) $(shell mkdir bin) bin/mp2ktool bin/song_ripper bin/sound_font_ripper bin/gba_mus_ripper
 
@@ -27,8 +28,8 @@ bin/song_ripper: src/song_ripper.cpp src/midi.hpp build/midi.o
 bin/sound_font_ripper: build/sound_font_ripper.o build/gba_samples.o build/gba_instr.o src/sf2cute/build/libsf2cute.a
 	$(CPPC) $(FLAGS) $(WHOLE) build/gba_samples.o build/gba_instr.o build/sound_font_ripper.o src/sf2cute/build/libsf2cute.a -o bin/sound_font_ripper
 
-bin/gba_mus_ripper: src/gba_mus_ripper.cpp src/hex_string.hpp
-	$(CPPC) $(FLAGS) $(WHOLE) src/gba_mus_ripper.cpp -o bin/gba_mus_ripper
+bin/gba_mus_ripper: src/gba_mus_ripper.cpp src/hex_string.hpp src/yaml-cpp/build/libyaml-cpp.a
+	$(CPPC) $(FLAGS) $(WHOLE) -I./src/yaml-cpp/include/ src/gba_mus_ripper.cpp src/yaml-cpp/build/libyaml-cpp.a -o bin/gba_mus_ripper
 
 build/midi.o: src/midi.cpp src/midi.hpp
 	$(CPPC) $(FLAGS) -c src/midi.cpp -o build/midi.o
@@ -45,6 +46,10 @@ build/sound_font_ripper.o: src/sound_font_ripper.cpp src/gba_instr.hpp src/hex_s
 src/sf2cute/build/libsf2cute.a: $(SF2CUTE_SRC_FILES)
 	$(CMAKE) -S src/sf2cute -B src/sf2cute/build
 	$(MAKE) --directory=src/sf2cute/build
+
+src/yaml-cpp/build/libyaml-cpp.a: $(YAMLCPP_SRC_FILES)
+	$(CMAKE) -S src/yaml-cpp -B src/yaml-cpp/build
+	$(MAKE) --directory=src/yaml-cpp/build
 
 clean:
 	rm -f *.o *.s *.i *.ii

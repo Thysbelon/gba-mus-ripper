@@ -18,6 +18,7 @@
 #include <stdio.h> // popen
 #include <string> // stoul
 #include <utility> // pair
+#include "yaml-cpp/include/yaml-cpp/yaml.h"
 
 //#ifndef WIN32
 //namespace sappy_detector
@@ -158,12 +159,8 @@ static std::pair<int, int> getSampleRateIndexAndVol(std::string prg_prefix, std:
 	if (stringLine=="null\n"){
 		printf("address of sound engine could not be found.\n");
 		pclose(mp2ktoolOutput);
-		return std::make_pair(0,0);
+		//return std::make_pair(0,0);
 		
-		// TODO: link this program with a yaml parsing library; at this line, when mp2ktool can't find the sound engine, search VG Music Studio's MP2K.yaml for the game's sample rate.
-		// code that VG Music Studio uses to get the GameCode and version for searching in MP2K.yaml (addresses are absolute, not relative):
-		// GameCode = Reader.ReadString(4, false, 0xAC);
-		// Version = Reader.ReadByte(0xBC);
 		fseek(inGBA, 0xAC, SEEK_SET);
 		char gameCode[5];
 		fread(&gameCode, 4, 1, inGBA);
@@ -173,6 +170,24 @@ static std::pair<int, int> getSampleRateIndexAndVol(std::string prg_prefix, std:
 		fread(&version, 1, 1, inGBA);
 		printf("version: %i\n", version);
 		// yaml reading here
+		YAML::Node gameDatabase;
+		try {
+			gameDatabase = YAML::LoadFile("./data/MP2K.yaml"); // TODO: better way to look in ./data/ and ../data/
+		} catch (...) {
+			gameDatabase = YAML::LoadFile("../data/MP2K.yaml");
+		}
+		std::string stringGameCode(gameCode);
+		YAML::Node curGameEntry;
+		std::string testString = stringGameCode+"_0"+std::to_string(version); // TODO: handle version number greater than one digit (>9)
+		printf("testString: %s\n", testString.c_str());
+		if (gameDatabase[testString]){
+			curGameEntry = gameDatabase[testString]; 
+		} else {
+			return std::make_pair(0,0);
+		}
+		// check if the current entry is a copy of another entry
+		if (curGameEntry["Copy"]) curGameEntry = gameDatabase[curGameEntry["Copy"].as<std::string>()]; // TODO TEST
+		return std::make_pair(curGameEntry["SampleRate"].as<int>() + 1, curGameEntry["Volume"].as<int>());
 	}
 	uint32_t sound_engine_adr = std::stoul(stringLine, nullptr, 16); // https://stackoverflow.com/questions/1070497/c-convert-hex-string-to-signed-integer
 	printf("sound_engine_adr: 0x%08x\n", sound_engine_adr); // https://stackoverflow.com/questions/14733761/printf-formatting-for-hexadecimal
