@@ -140,6 +140,7 @@ There is no Midi CC to set LFO type to pan position because it is impossible to 
 - CC24: Detune. This doesn't have any effect on the sound of the Midi and SF2, as an RPN 1 event is used to do detune instead. CC24 is still important if you plan on converting your Midi into MP2K, as only CC24 will be detected by Midi2AGB. A value of 64 is normal pitch, 0 is one semitone lower, and 127 is one semitone higher.
 - "rev=???": This is a text event that controls what the global reverb of the song will be after being converted by Midi2AGB. It has no effect on the sound of the Midi and SF2.
 - "pri=???": This is a text event that controls what the global priority of the song will be after being converted by Midi2AGB. Priority is a setting used by a GBA game engine to determine whether or not sound effects should interrupt this song. It has no effect on the sound of the Midi and SF2.
+- "nat=???": This is a text event that controls whether Midi2AGB will alter the values of all volume events to approximate Midi-like loudness in MP2K, or leave them as is. It has no effect on the sound of the Midi and SF2. gba-mus-ripper always tries to preserve the volume levels of the original MP2K song, either by changing the volume event values, or by adding a modulator to the SF2 when raw is used. It is recommend to *not* change the "nat" event.
 
 #### Explanation of RPN Events
 
