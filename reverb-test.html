@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<head>
+<meta name=color-scheme content="dark light">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+<script src="fluidsynth-modulator-test.js"></script>
+</head>
+<body style=max-width:43em;margin-left:auto;margin-right:auto>
+  <p>Blue is c1yValuesLVfalse, green is c1yValuesLVtrue. "distance" is the distance between the y-values of the first point and the last point.</p>
+  <!-- <p><label for="BPM">BPM (1-510):</label><input type="number" id="BPM" min="1" max="510" value="116" />
+  <p><label for="LFOS">LFOS (1-127):</label><input type="number" id="LFOS" min="1" max="127" value="35" /> -->
+  <!-- <p><label for="SF2numOrHertz">Display as SF2 number or hertz:</label><select id="SF2numOrHertz"><option>SF2 Number</option><option>Hertz</option></select> -->
+<div>
+  <div style=float:left;width:80%>
+  <canvas id="myChart" style="width:100%;max-width:600px;background-color:white"></canvas>
+  </div>
+  <div id=chart1Anno style=float:right;width:19%>fsdfs</div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+<script>
+var fluidsynthModCalcObj, fluidsynthModCalcFunc;
+
+
+
+function diff( x, y ) { // https://stackoverflow.com/a/65091555/20697953
+
+    if ( Math.sign( x ) === Math.sign( y ) ) {
+
+        return Math.abs( x - y );
+
+    } else {
+
+        return Math.abs( x ) + Math.abs( y );
+
+    };
+
+};
+
+//const SF2numHertzElem = document.getElementById('SF2numOrHertz')
+//const LFOSelem = document.getElementById('LFOS')
+//const BPMelem = document.getElementById('BPM');
+var simulateModulator=function(){};
+
+(async () => {
+
+//const convertSF2numToHertz=true;
+
+
+var fluidsynthModCalcObj = await fluidsynthModCalc(); // main needs to be an EMSCRIPTEN_KEEPALIVE function that is called using cwrap in order to get the return value.
+	var fluidsynthModCalcFunc = fluidsynthModCalcObj.cwrap('myConvert', 'number', ['number', 'number', 'number'])
+	//console.log( fluidsynthModCalcFunc(35, 8) )
+	
+	simulateModulator = async function (MP2Krev /*0-127*/, lv/*bool*/, newMod/*bool*/){
+		if (lv){
+			var num1 = await fluidsynthModCalcFunc(Math.round(Math.sqrt(127*MP2Krev)), 0, 200);
+			return num1
+		} else if (newMod) {
+			var num1 = await fluidsynthModCalcFunc(MP2Krev, 8, 200); 
+			var num2 = await fluidsynthModCalcFunc(MP2Krev, /*9*/ 1, -60);
+			return num1+num2
+		} else {
+			var num1 = await fluidsynthModCalcFunc(MP2Krev, 0, 200); // default modulator
+			return num1
+		}
+	}
+	
+await setupChart1();
+})();
+
+
+
+var chart1;
+async function setupChart1(){
+	if (chart1){
+		chart1.destroy()
+	}
+
+	c1xValuesVOL=[]
+	c1yValuesLVfalse=[]
+	c1yValuesLVtrue=[]
+	c1yValuesNewMod=[]
+
+	for (let i=0, l=127; i<=l; i++){
+		c1xValuesVOL.push(i)
+		var modSim
+		modSim=await simulateModulator(i, false, false)
+		c1yValuesLVfalse.push(modSim)
+		modSim=await simulateModulator(i, true, false)
+		c1yValuesLVtrue.push(modSim)
+		modSim=await simulateModulator(i, false, true)
+		c1yValuesNewMod.push(modSim)
+	}
+
+
+
+	chart1=new Chart("myChart", {
+		type: "line",
+		data: {
+			labels: c1xValuesVOL,
+			datasets: [{
+				fill: false,
+				//lineTension: 0,
+				backgroundColor: "blue",
+				borderColor: "blue",
+				data: c1yValuesLVfalse
+			},{
+				fill: false,
+				backgroundColor: "green",
+				borderColor: "green",
+				data: c1yValuesLVtrue
+			},{
+				fill: false,
+				backgroundColor: "purple",
+				borderColor: "purple",
+				data: c1yValuesNewMod
+			}]
+		},
+		options: {
+			legend: {display: false},
+			title: {
+				display: true,
+				text: "X: MP2K VOL. Y: SF2 Number."
+			}
+		}
+	});
+
+	document.getElementById("chart1Anno").innerText="blue line y max distance: "+(diff(c1yValuesLVfalse[126], c1yValuesLVfalse[0]))+"\ngreen line y max distance: "+(diff(c1yValuesLVtrue[126], c1yValuesLVtrue[0]))
+
+}
+
+</script>
