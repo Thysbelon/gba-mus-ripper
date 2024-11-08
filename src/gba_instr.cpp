@@ -17,8 +17,6 @@
 extern FILE *inGBA;					// Related .gba file
 
 void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zone, uint8_t otherMods){
-	// TODO: analyze MP2K MOD (LFO depth) and make a modulator to make midi and SF2 more accurate if necessary.
-	
 	SFModulator modDepthIncUniLinMod(SFMidiController::kModulationDepth,
 			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
 			SFControllerType::kLinear);
@@ -53,7 +51,7 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 	global_instrument_zone->SetModulator(SFModulatorItem(
 			modDepthIncUniLinMod,
 		SFGenerator::kModLfoToPitch,
-		50,
+		800,
 		SFModulator(SFMidiController::kController110,
 			SFControllerDirection::kDecrease, SFControllerPolarity::kUnipolar,
 			SFControllerType::kSwitch),
@@ -63,7 +61,7 @@ void GBAInstr::addModulatorsToGlobalZone(SFInstrumentZone* global_instrument_zon
 	global_instrument_zone->SetModulator(SFModulatorItem(
 			modDepthIncUniLinMod,
 		SFGenerator::kModLfoToVolume,
-		300,
+		-200,
 		SFModulator(SFMidiController::kController111,
 			SFControllerDirection::kIncrease, SFControllerPolarity::kUnipolar,
 			SFControllerType::kSwitch),
