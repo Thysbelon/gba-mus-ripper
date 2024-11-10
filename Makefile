@@ -55,3 +55,5 @@ clean:
 	rm -f *.o *.s *.i *.ii
 	rm -rf build/
 	rm -rf bin/
+	rm -rf src/sf2cute/build/
+	rm -rf src/yaml-cpp/build/

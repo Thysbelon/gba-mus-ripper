@@ -19,20 +19,21 @@ FLAGS=-Wall -fdata-sections -ffunction-sections -fmax-errors=5 -Os
 WHOLE=-s -fwhole-program -static
 
 SF2CUTE_SRC_FILES = src/sf2cute/src/sf2cute/$(wildcard *.cpp) # TODO include *.hpp files too?
+YAMLCPP_SRC_FILES = src/yaml-cpp/src/$(wildcard *.cpp)
 
-all: $(shell mkdir build-w) $(shell mkdir bin-w) bin-w/mp2ktools bin-w/song_ripper bin-w/sound_font_ripper bin-w/gba_mus_ripper
+all: $(shell mkdir build-w) $(shell mkdir bin-w) bin-w/mp2ktool.exe bin-w/song_ripper.exe bin-w/sound_font_ripper.exe bin-w/gba_mus_ripper.exe
 
-bin-w/mp2ktools: src/mp2ktool/mp2ktool.cpp src/mp2ktool/mp2kcomm.cpp src/mp2ktool/agbm4a.cpp src/mp2ktool/mp2kcomm.h src/mp2ktool/agbm4a.h
+bin-w/mp2ktool.exe: src/mp2ktool/mp2ktool.cpp src/mp2ktool/mp2kcomm.cpp src/mp2ktool/agbm4a.cpp src/mp2ktool/mp2kcomm.h src/mp2ktool/agbm4a.h
 	$(CPPC2) src/mp2ktool/mp2ktool.cpp src/mp2ktool/mp2kcomm.cpp src/mp2ktool/agbm4a.cpp -o bin-w/mp2ktool
 
-bin-w/song_ripper: src/song_ripper.cpp src/midi.hpp build-w/midi.o
+bin-w/song_ripper.exe: src/song_ripper.cpp src/midi.hpp build-w/midi.o
 	$(CPPC) $(FLAGS) $(WHOLE) src/song_ripper.cpp build-w/midi.o -o bin-w/song_ripper
 
-bin-w/sound_font_ripper: build-w/sound_font_ripper.o build-w/gba_samples.o build-w/gba_instr.o src/sf2cute/build-w/libsf2cute.a
+bin-w/sound_font_ripper.exe: build-w/sound_font_ripper.o build-w/gba_samples.o build-w/gba_instr.o src/sf2cute/build-w/libsf2cute.a
 	$(CPPC) $(FLAGS) $(WHOLE) build-w/gba_samples.o build-w/gba_instr.o build-w/sound_font_ripper.o src/sf2cute/build-w/libsf2cute.a -o bin-w/sound_font_ripper
 
-bin-w/gba_mus_ripper: src/gba_mus_ripper.cpp src/hex_string.hpp
-	$(CPPC) $(FLAGS) $(WHOLE) src/gba_mus_ripper.cpp -o bin-w/gba_mus_ripper
+bin-w/gba_mus_ripper.exe: src/gba_mus_ripper.cpp src/hex_string.hpp src/yaml-cpp/build-w/libyaml-cpp.a
+	$(CPPC) $(FLAGS) $(WHOLE) -I./src/yaml-cpp/include/ src/gba_mus_ripper.cpp src/yaml-cpp/build-w/libyaml-cpp.a -o bin-w/gba_mus_ripper
 
 build-w/midi.o: src/midi.cpp src/midi.hpp
 	$(CPPC) $(FLAGS) -c src/midi.cpp -o build-w/midi.o
@@ -49,9 +50,14 @@ build-w/sound_font_ripper.o: src/sound_font_ripper.cpp src/gba_instr.hpp src/hex
 src/sf2cute/build-w/libsf2cute.a: $(SF2CUTE_SRC_FILES)
 	$(CMAKE) -DCMAKE_C_COMPILER=$(JUST_CC) -DCMAKE_CXX_COMPILER=$(JUST_CPPC) -S src/sf2cute -B src/sf2cute/build-w
 	$(MAKE) --directory=src/sf2cute/build-w
-	
+
+src/yaml-cpp/build-w/libyaml-cpp.a: $(YAMLCPP_SRC_FILES) # DOESN'T WORK. Lots of linker errors involving "__declspec(dllimport)". I *don't* want to make a dll, I just want to make a static library. TODO: Update llvm-mingw. Make sure yaml-cpp is up to date
+	$(CMAKE) -E env CMAKE_C_COMPILER=$(JUST_CC) CMAKE_CXX_COMPILER=$(JUST_CPPC) $(CMAKE) -DCMAKE_C_COMPILER=$(JUST_CC) -DCMAKE_CXX_COMPILER=$(JUST_CPPC) -DBUILD_SHARED_LIBS=OFF -DYAML_CPP_STATIC_DEFINE=ON -S src/yaml-cpp -B src/yaml-cpp/build-w
+	$(MAKE) --directory=src/yaml-cpp/build-w
+
 clean:
 	rm -f *.o *.s *.i *.ii
 	rm -rf build-w/
 	rm -rf bin-w/
-	rm -rf src/sf2cute/build-w
+	rm -rf src/sf2cute/build-w/
+	rm -rf src/yaml-cpp/build-w/
