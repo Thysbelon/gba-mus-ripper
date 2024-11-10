@@ -687,12 +687,16 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Can't write to file %s.\n", argv[2]);
 			exit(0);
 		}
-	}
+	}/* else {
+		printf("dry mode. not writing.\n");
+	}*/
 
+	//printf("Converting...\n");
 	printf("Converting...");
 
 	if (rc) 
 	{	// Make the drum channel last in the list, hopefully reducing the risk of it being used
+		//printf("rc.\n");
 		midi.chn_reorder[9] = 15; // moves channel 10 to channel 16
 		midi.chn_reorder[15] = 9;
 	}
@@ -712,11 +716,14 @@ int main(int argc, char *argv[])
 		midi.add_sysex(xg_sysex, sizeof xg_sysex);
 	}
 
+	//printf("adding marker...\n");
 	midi.add_marker("Converted by SequenceRipper 2.0");
 
+	//printf("getting bytes...\n");
 	fgetc(inGBA);						// Unknown byte
 	int8_t priority = fgetc(inGBA);						// Priority
 	int8_t reverb = fgetc(inGBA);		// Reverb
+	//printf("bytes obtained.\n");
 	
 	// For midi2agb
 	if (reverb < 0){ // It's supposed to be less than 0, because it's a signed integer. Reverb is only active when the value is negative (when bit 7 is set).
@@ -724,6 +731,7 @@ int main(int argc, char *argv[])
 		snprintf(revMarker, 8, "rev=%d", reverb & 0x7f /*turns reverb into a positive number*/);
 		midi.add_marker(revMarker);
 	}
+	//printf("reverb marker done.\n");
 	if (priority > 0){
 		char priMarker[8];
 		snprintf(priMarker, 8, "pri=%d", priority);
@@ -736,6 +744,7 @@ int main(int argc, char *argv[])
 	}
 
 	int instr_bank_address = get_GBA_pointer();
+	//printf("instr_bank_address obtained.\n");
 
 	// Read table of pointers
 	for (int i = 0; i < track_amnt; i++)
@@ -751,6 +760,7 @@ int main(int argc, char *argv[])
 		if (reverb < 0)  // add reverb controller on all tracks
 			midi.add_controller(i, 91, lv ? (int)sqrt((reverb & 0x7f) * 127.0) : reverb & 0x7f);
 	}
+	//printf("table of pointers read.\n");
 
 	// Search for loop address of track #0
 	if (track_amnt > 1)	// If 2 or more track, end of track is before start of track 2
@@ -759,6 +769,8 @@ int main(int argc, char *argv[])
 		// If only a single track, the end is before start of header data
 		fseek(inGBA, base_address - 9, SEEK_SET);
 
+	//printf("loop address.\n");
+	
 	// Read where in track 1 the loop starts
 	for (int i = 0; i < 5; i++)
 		if (fgetc(inGBA) == 0xb2)
@@ -768,6 +780,8 @@ int main(int argc, char *argv[])
 			break;
 		}
 
+	//printf("loop address read.\n");
+		
 	// This is the main loop which will process all channels
 	// until they are all inactive
 	int i = 100000;
@@ -780,6 +794,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	//printf("main loop finished.\n");
+	
 	// If a loop was detected this is its end
 	if (loop_flag) midi.add_marker("loopEnd");
 

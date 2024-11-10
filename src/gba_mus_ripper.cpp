@@ -88,6 +88,15 @@ static std::string dec4(unsigned int n)
 	return s;
 }
 
+/*inline*/ bool exists_test1 (const std::string& name) { // https://stackoverflow.com/questions/12774207/fastest-way-to-check-if-a-file-exists-using-standard-c-c11-14-17-c
+	if (FILE *file = fopen(name.c_str(), "r")) {
+		fclose(file);
+		return true;
+	} else {
+		return false;
+	}   
+}
+
 static uint32_t getSoundTable(std::string prg_prefix, std::string inGBA_path){ 
 	std::string mp2ktoolCmd = prg_prefix + "mp2ktool songtable \"" + inGBA_path + "\"";
 	printf("DEBUG: going to call popen(%s)\n", mp2ktoolCmd.c_str());
@@ -171,14 +180,24 @@ static std::pair<int, int> getSampleRateIndexAndVol(std::string prg_prefix, std:
 		printf("version: %i\n", version);
 		// yaml reading here
 		YAML::Node gameDatabase;
-		try {
-			gameDatabase = YAML::LoadFile("./data/MP2K.yaml"); // TODO: better way to look in ./data/ and ../data/
-		} catch (...) {
-			gameDatabase = YAML::LoadFile("../data/MP2K.yaml");
+		std::string yamlFilePath="undefined";
+		std::string possible_paths[]={".","./data","../data"};
+		for (int i=0; i<3; i++){
+			if (exists_test1(possible_paths[i]+"/MP2K.yaml")) {
+				yamlFilePath=possible_paths[i];
+				break;
+			}
 		}
+		if (yamlFilePath=="undefined"){
+			printf("warning: MP2K.yaml not found");
+			return std::make_pair(0,0);
+		}
+		gameDatabase = YAML::LoadFile(yamlFilePath+"/MP2K.yaml");
 		std::string stringGameCode(gameCode);
 		YAML::Node curGameEntry;
-		std::string testString = stringGameCode+"_0"+std::to_string(version); // TODO: handle version number greater than one digit (>9)
+		char zeroPaddedString[3];
+		snprintf(zeroPaddedString, 3, "%02i", version);
+		std::string testString = stringGameCode+"_"+std::string(zeroPaddedString);
 		printf("testString: %s\n", testString.c_str());
 		if (gameDatabase[testString]){
 			curGameEntry = gameDatabase[testString]; 
@@ -186,7 +205,7 @@ static std::pair<int, int> getSampleRateIndexAndVol(std::string prg_prefix, std:
 			return std::make_pair(0,0);
 		}
 		// check if the current entry is a copy of another entry
-		if (curGameEntry["Copy"]) curGameEntry = gameDatabase[curGameEntry["Copy"].as<std::string>()]; // TODO TEST
+		if (curGameEntry["Copy"]) curGameEntry = gameDatabase[curGameEntry["Copy"].as<std::string>()];
 		return std::make_pair(curGameEntry["SampleRate"].as<int>() + 1, curGameEntry["Volume"].as<int>());
 	}
 	uint32_t sound_engine_adr = std::stoul(stringLine, nullptr, 16); // https://stackoverflow.com/questions/1070497/c-convert-hex-string-to-signed-integer
