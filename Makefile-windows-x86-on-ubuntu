@@ -33,7 +33,7 @@ bin-w/sound_font_ripper.exe: build-w/sound_font_ripper.o build-w/gba_samples.o b
 	$(CPPC) $(FLAGS) $(WHOLE) build-w/gba_samples.o build-w/gba_instr.o build-w/sound_font_ripper.o src/sf2cute/build-w/libsf2cute.a -o bin-w/sound_font_ripper
 
 bin-w/gba_mus_ripper.exe: src/gba_mus_ripper.cpp src/hex_string.hpp src/yaml-cpp/build-w/libyaml-cpp.a
-	$(CPPC) $(FLAGS) $(WHOLE) -I./src/yaml-cpp/include/ src/gba_mus_ripper.cpp src/yaml-cpp/build-w/libyaml-cpp.a -o bin-w/gba_mus_ripper
+	$(CPPC) $(FLAGS) $(WHOLE) -I./src/yaml-cpp/include/ src/gba_mus_ripper.cpp -DYAML_CPP_STATIC_DEFINE=ON src/yaml-cpp/build-w/libyaml-cpp.a -o bin-w/gba_mus_ripper
 
 build-w/midi.o: src/midi.cpp src/midi.hpp
 	$(CPPC) $(FLAGS) -c src/midi.cpp -o build-w/midi.o
@@ -52,7 +52,7 @@ src/sf2cute/build-w/libsf2cute.a: $(SF2CUTE_SRC_FILES)
 	$(MAKE) --directory=src/sf2cute/build-w
 
 src/yaml-cpp/build-w/libyaml-cpp.a: $(YAMLCPP_SRC_FILES) # BUG. DOESN'T WORK. Static library builds successfully, but it cannot be linked with gba_mus_ripper due to the __declspec(dllimport) errors.
-	$(CMAKE) -DCMAKE_TOOLCHAIN_FILE=../mingw.cmake -DBUILD_SHARED_LIBS=OFF -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_INSTALL=OFF -DYAML_CPP_BUILD_CONTRIB=OFF -DYAML_ENABLE_PIC=OFF -S src/yaml-cpp -B src/yaml-cpp/build-w
+	$(CMAKE) -DCMAKE_TOOLCHAIN_FILE=../mingw.cmake -DBUILD_SHARED_LIBS=OFF -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_INSTALL=OFF -DYAML_CPP_BUILD_CONTRIB=OFF -S src/yaml-cpp -B src/yaml-cpp/build-w
 	$(MAKE) --directory=src/yaml-cpp/build-w
 
 clean:
