@@ -51,8 +51,8 @@ src/sf2cute/build-w/libsf2cute.a: $(SF2CUTE_SRC_FILES)
 	$(CMAKE) -DCMAKE_C_COMPILER=$(JUST_CC) -DCMAKE_CXX_COMPILER=$(JUST_CPPC) -S src/sf2cute -B src/sf2cute/build-w
 	$(MAKE) --directory=src/sf2cute/build-w
 
-src/yaml-cpp/build-w/libyaml-cpp.a: $(YAMLCPP_SRC_FILES) # DOESN'T WORK. Lots of linker errors involving "__declspec(dllimport)". I *don't* want to make a dll, I just want to make a static library. TODO: Update llvm-mingw. Make sure yaml-cpp is up to date
-	$(CMAKE) -E env CMAKE_C_COMPILER=$(JUST_CC) CMAKE_CXX_COMPILER=$(JUST_CPPC) $(CMAKE) -DCMAKE_C_COMPILER=$(JUST_CC) -DCMAKE_CXX_COMPILER=$(JUST_CPPC) -DBUILD_SHARED_LIBS=OFF -DYAML_CPP_STATIC_DEFINE=ON -S src/yaml-cpp -B src/yaml-cpp/build-w
+src/yaml-cpp/build-w/libyaml-cpp.a: $(YAMLCPP_SRC_FILES) # BUG. DOESN'T WORK. Static library builds successfully, but it cannot be linked with gba_mus_ripper due to the __declspec(dllimport) errors.
+	$(CMAKE) -DCMAKE_TOOLCHAIN_FILE=../mingw.cmake -DBUILD_SHARED_LIBS=OFF -DYAML_CPP_BUILD_TOOLS=OFF -DYAML_CPP_INSTALL=OFF -DYAML_CPP_BUILD_CONTRIB=OFF -DYAML_ENABLE_PIC=OFF -S src/yaml-cpp -B src/yaml-cpp/build-w
 	$(MAKE) --directory=src/yaml-cpp/build-w
 
 clean:
