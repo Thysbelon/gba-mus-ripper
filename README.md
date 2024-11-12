@@ -189,7 +189,7 @@ I still need to research how to connect QSynth to Reaper.
 
 Compilation is the act of turning human-readable source code into machine code that a computer can run. Ready-to-run builds are in the releases section. Compilation is *only* neccessary if you are a developer who wishes to make modifications to this program, or there is no release build for your platform.
 
-First, use git to clone this repository **with submodules**. The sf2cute library that sound_font_ripper depends on is a submodule, and if it is not present the gba_mus_ripper suite will not compile.
+First, use git to clone this repository **with submodules**. The sf2cute and yaml-cpp libraries that the suite depends on are submodules, and if they are not present the gba_mus_ripper suite will not compile.
 
 Use `git clone --recurse-submodules https://github.com/Thysbelon/gba-mus-ripper.git`
 
@@ -200,7 +200,9 @@ You need support for C++11, this means if you're using gcc you're going to need 
 
 There are separate Makefiles for different platforms. The default Makefile is for Linux. Makefile-windows is for compiling on Windows. Makefile-windows-[x86/aarch64]-on-ubuntu is for cross-compiling to Windows on Linux. Both Windows native and cross compilation use the compiler [llvm-mingw](https://github.com/mstorsjo/llvm-mingw), because it is a portable download that requires little set-up.
 
-**Makefile-windows is currently nonfunctional.** This is because the current default Linux Makefile calls CMake to compile the sf2cute library that sound_font_ripper depends on. llvm-mingw does not come with a CMake equivalent and I do not know of any Windows CMake programs that are as easy to install as llvm-mingw.
+There are two toolchain files, mingw-x86.cmake and mingw-aarch64.cmake, that both contain a relative path to the llvm-mingw folder. Please edit these paths to point to the location of llvm-mingw on your machine.
+
+**Makefile-windows is currently nonfunctional.** This is because the current default Linux Makefile calls CMake to compile the sf2cute and yaml-cpp libraries that the suite depends on. llvm-mingw does not come with a CMake equivalent and I do not know of any Windows CMake programs that are as easy to install as llvm-mingw.
 
 <!--### Rip songs semi-manually
 
