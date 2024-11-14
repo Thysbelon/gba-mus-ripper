@@ -200,6 +200,8 @@ You need support for C++11, this means if you're using gcc you're going to need 
 
 There are separate Makefiles for different platforms. The default Makefile is for Linux. Makefile-windows is for compiling on Windows. Makefile-windows-[x86/aarch64]-on-ubuntu is for cross-compiling to Windows on Linux. Both Windows native and cross compilation use the compiler [llvm-mingw](https://github.com/mstorsjo/llvm-mingw), because it is a portable download that requires little set-up.
 
+Remember to add llvm-mingw to the "path" environment variable before compiling.
+
 There are two toolchain files, mingw-x86.cmake and mingw-aarch64.cmake, that both contain a relative path to the llvm-mingw folder. Please edit these paths to point to the location of llvm-mingw on your machine.
 
 **Makefile-windows is currently nonfunctional.** This is because the current default Linux Makefile calls CMake to compile the sf2cute and yaml-cpp libraries that the suite depends on. llvm-mingw does not come with a CMake equivalent and I do not know of any Windows CMake programs that are as easy to install as llvm-mingw.
