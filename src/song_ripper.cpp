@@ -203,13 +203,18 @@ static bool tick(int track_amnt)
 		counter[track]--;
 		// Process events until counter non-null or pointer null
 		// This might not be executed if counter both are non null.
-		while (track_ptr[track] != 0 && !end_flag && counter[track] <= 0)
+		unsigned long long whileCheck=0;
+		while (track_ptr[track] != 0 && !end_flag/*?*/ && counter[track] <= 0) // BUG: metroid zero mission jp song 66 hangs here; the while loop goes on forever (when there is no whileCheck)
 		{
 			// Check if we're at loop start point
 			if (track == 0 && loop_flag && !return_flag[0] && !track_completed[0] && track_ptr[0] == loop_adr)
 				midi.add_marker("loopStart");
 
 			process_event(track, track_amnt/*only used by one bit of code I added*/);
+			whileCheck++;
+			//if (whileCheck % 10000 == 0) printf("whileCheck: %llu\n", whileCheck);
+			//if (whileCheck >= 10000) {printf("Processing froze on track %d. Aborting...\n", track); break;} // something weird is happening with metroid zero mission jp song 66; it gets stuck on track 5, then also 4, then also 3 over and over instead of incrementing the track number.
+			if (whileCheck >= 10000) {printf("Processing froze on this song. Aborting...\n\n"); exit(1);}
 		}
 	}
 
@@ -610,7 +615,9 @@ static void process_event(int track, int track_amnt)
 		}	return;
 
 		default :
-			break;
+			//break;
+			//printf("WARNING: unknown command 0x%X. Continuing...\n", command);
+			return;
 	}
 }
 
@@ -692,7 +699,7 @@ int main(int argc, char *argv[])
 	}*/
 
 	//printf("Converting...\n");
-	printf("Converting...");
+	printf("Converting...\n");
 
 	if (rc) 
 	{	// Make the drum channel last in the list, hopefully reducing the risk of it being used
@@ -799,7 +806,7 @@ int main(int argc, char *argv[])
 	// If a loop was detected this is its end
 	if (loop_flag) midi.add_marker("loopEnd");
 
-	printf(" Maximum simultaneous notes: %d\n", simultaneous_notes_max);
+	printf("Maximum simultaneous notes: %d\n", simultaneous_notes_max);
 
 	printf("Dump complete. Now outputting MIDI file...");
 	if (!dry) midi.write(outMID);
