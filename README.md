@@ -6,11 +6,7 @@ README originally written by Bregalad; edited by Thysbelon.
 
 Downloads are available in the [releases section](https://github.com/Thysbelon/gba-mus-ripper/releases) on the right of this repository's GitHub homepage.
 
----
-
 GBA Mus Ripper is a suite of programs to rip music from Game Boy Advance (GBA) games using the MusicPlayer2000 a.k.a. "Sappy" sound engine, a [really common engine among commercial GBA games](https://vgmpf.com/Wiki/index.php?title=User:IgoreshaZhu/GBA_sound_drivers#MusicPlayer2000.2FSappy_.28Nintendo.29).
-
----
 
 ## Applications:
 
@@ -25,12 +21,12 @@ IMPORTANT NOTE: The "gba_mus_ripper" executable simply calls the other 3 executa
 
 ---
 
-### 1) GBA Mus Ripper
+## 1) GBA Mus Ripper
 
 This is the main program which does everything automatically. Normally you'd only want to use this one, but the other 3 sub-programs can also be used individually too.
-This program detects the presence of the MP2K sound engine in a given ROM, and converts all detected songs to .mid files, and rip all detected sound banks to a .sf2 file.
+This program detects the presence of the MP2K sound engine in a given ROM, converts all detected songs to .mid files, and rips all detected sound banks to a .sf2 file.
 
-# HOW TO USE THIS PROGRAM
+### HOW TO USE THIS PROGRAM
 
 On Windows, you should open a console prompt in the folder containing the ".exe" files.
 Type "cmd" in the File Explorer address bar, then press "enter". [(How-To Geek's guide)](https://www.howtogeek.com/789662/how-to-open-a-cmd-window-in-a-folder-on-windows/)
@@ -63,6 +59,58 @@ The following flag options are available:
 
 <!--On Linux, you should first compile the program yourself. See compilation notes a few chapters below.
 Once the program is compiled into executable form, its usage is identical.-->
+
+
+## How To Playback converted MIDIs
+
+Both MIDI and SF2 are widely used standards so there are a wide range of programs supporting these.
+
+**However, please make sure to select a program that supports modulators in SF2 files. If your program does not support SF2 modulators, you will hear warbly vibrato in songs that aren't supposed to have vibrato.**
+
+I recommend using a synthesizer that uses the FluidSynth library.   
+FluidSynth is a pedantic midi and SF2 synthesizer library that focuses on following the midi and SF2 standard closely. It supports modulators in SF2 files, which this program uses to have pitch and volume LFO sound accurate to GBA. I always use FluidSynth when testing this program.
+
+[VLC Media Player has a midi plugin that uses FluidSynth](https://wiki.videolan.org/Midi/). This plugin also supports choosing whatever soundfont file you want (either through the GUI, or you can run VLC from the command line with `vlc --soundfont input.sf2 input.midi` to temporarily change the soundfont).
+
+For viewing and editing midi files, I recommend using [Reaper](https://www.reaper.fm/) (import midi with a separate track for each channel), [FluidSynthPlugin](https://github.com/prof-spock/FluidSynthPlugin), and [SWS actions to quickly copy and paste FluidSynthPlugin to all tracks](https://forums.cockos.com/showpost.php?p=1793337&postcount=4).
+
+Another option for editing midi files is using MidiEditor connected to QSynth (GUI for the FluidSynth program).
+
+I still need to research how to connect QSynth to Reaper.
+
+
+## Explanation of Special MP2K Midi CCs
+
+This information is important to know if you plan on editing the midi files that song_ripper outputs.
+
+Not all the features of MP2K are supported in the default midi spec, so song_ripper assigns these MP2K events to undefined Midi CCs, then modulators in the SF2 file allow these CCs to have the same effect as on MP2K.
+
+For example, there is no Midi CC that is labelled as a way to control the speed of LFO (vibrato or tremolo), but MP2K has an LFOS event that is used to control the speed of LFO. To make the midi and SF2 more accurate to GBA hardware, LFOS events in MP2K are converted to undefined CC21 events, and a modulator in the SF2 file uses CC21 as an input to control the LFO speed.
+
+A list of all special undefined midi CCs, and what they are set to control, is listed below.
+
+**NOTICE: a lot of SF2 synthesizer daw plugins (vst, lv2)** ***do not*** **support modulators.** Please use one of the options listed in the section ["Playback converted MIDIs"](#playback-converted-midis).
+
+- CC21: LFO speed. The higher the number, the faster that LFO (vibrato or tremolo) will be. Takes the place of the MP2K event LFOS. If you'd like to see exactly how LFOS or CC21 relates to LFO speed, please refer to this [simple LFOS-CC21-Hertz Comparison webapp I made](https://thysbelon.github.io/gba-mus-ripper/mp2k-LFO-speed-and-sf2-LFO-speed-comparison.html).
+- CC115: LFO speed in MP2K is determined by both the LFOS setting *and* the current BPM. There is no way for an SF2 modulator to read the current BPM of the Midi file, so instead a CC115 is placed on every track every time there is a BPM change in order to keep the LFO speed accurate to MP2K. The value of CC115 is the BPM divided by 4 (Midi CCs can only store a limited range of numbers).
+- CC26: LFO delay. When this is greater than zero, every time a note plays, there will be a delay before LFO starts. The higher the number, the greater the delay.
+- CC110: The first of two Midi CCs that take the place of MP2K MODT. MP2K MODT is a single event that determines if the LFO will be pitch (vibrato), volume (tremolo), or pan position (autopan). Because of the limitations of SF2 modulators, we need a separate CC to enable and disable each of these LFO types. CC110 controls pitch (vibrato) LFO type. **When CC110 is 0, pitch LFO type is enabled; when CC110 is 127 (max), pitch LFO type is disabled**. On MP2K, when no MODT event is used, LFO type defaults to pitch; using 0 as the "on" value for CC110 ensures the same is true in Midi and SF2.
+- CC111: The second of two Midi CCs that take the place of MP2K MODT. CC111 controls volume (tremolo) LFO type. **When CC111 is 127, volume LFO type is enabled; when CC111 is 0, volume LFO type is disabled**. The reason the on and off values for CC110 and CC111 are different is to ensure that if neither CC110 or CC111 is set, the Midi and SF2 will default to pitch LFO type just like MP2K.  
+Although Midi makes it possible to enable 2 kinds of LFO at the same time, please do not do this because it is not accurate to MP2K and it will cause issues if you try to run the Midi through [Midi2AGB](https://github.com/Thysbelon/midi2agb).  
+In order for a Midi to successfully be converted by [Midi2AGB](https://github.com/Thysbelon/midi2agb), CC110 and CC111 *must* be grouped together, and the order of them must be CC110 *then* CC111.  
+There is no Midi CC to set LFO type to pan position because it is impossible to do this with SF2 modulators. Whenever there is pan position LFO in an MP2K song, song_ripper will use CC110 and CC111 to disable pitch and volume LFO.
+- CC24: Detune. This doesn't have any effect on the sound of the Midi and SF2, as an RPN 1 event is used to do detune instead. CC24 is still important if you plan on converting your Midi into MP2K, as only CC24 will be detected by Midi2AGB. A value of 64 is normal pitch, 0 is one semitone lower, and 127 is one semitone higher.
+- "rev=???": This is a text event that controls what the global reverb of the song will be after being converted by Midi2AGB. It has no effect on the sound of the Midi and SF2.
+- "pri=???": This is a text event that controls what the global priority of the song will be after being converted by Midi2AGB. Priority is a setting used by a GBA game engine to determine whether or not sound effects should interrupt this song. It has no effect on the sound of the Midi and SF2.
+- "nat=???": This is a text event that controls whether Midi2AGB will alter the values of all volume events to approximate Midi-like loudness in MP2K, or leave them as is. It has no effect on the sound of the Midi and SF2. gba-mus-ripper always tries to preserve the volume levels of the original MP2K song, either by changing the volume event values, or by adding a modulator to the SF2 when `-raw` is used. It is recommend to *not* change the "nat" event.
+
+### Explanation of RPN Events
+
+[RecordingBlogs' explanation of RPN](https://www.recordingblogs.com/wiki/midi-registered-parameter-number-rpn)
+
+
+## The Other Programs in the GBA Mus Ripper Suite
+
 
 ### 2) mp2ktool
 
@@ -119,33 +167,6 @@ In general MIDI, midi channel 10 is reserved for drums. Unfortunately, we do not
 
 <!--`-sv` : Simulate vibrato. This will insert controllers in real time to simulate a vibrato, instead of just when commands are given. Like -lv, this should be used to have the output "sound" like the original song,but shouldn't be used to get an exact dump of sequence data.-->
 
-#### Explanation of Special MP2K Midi CCs
-
-Not all the features of MP2K are supported in the default midi spec, so song_ripper assigns these MP2K events to undefined Midi CCs, then modulators in the SF2 file allow these CCs to have the same effect as on MP2K.
-
-For example, there is no Midi CC that is labelled as a way to control the speed of LFO (vibrato or tremolo), but MP2K has an LFOS event that is used to control the speed of LFO. To make the midi and SF2 more accurate to hardware, LFOS events in MP2K are converted to undefined CC21 events, and a modulator in the SF2 file uses CC21 as an input to control the LFO speed.
-
-A list of all special undefined midi CCs, and what they are set to control, is listed below.
-
-**NOTICE: a lot of SF2 synthesizer daw plugins (vst, lv2)** ***do not*** **support modulators.** Please use one of the options listed in the section ["Playback converted MIDIs"](#playback-converted-midis).
-
-- CC21: LFO speed. The higher the number, the faster that LFO (vibrato or tremolo) will be. Takes the place of the MP2K event LFOS. If you'd like to see exactly how LFOS or CC21 relates to LFO speed, please refer to this [simple LFOS-CC21-Hertz Comparison webapp I made](https://thysbelon.github.io/gba-mus-ripper/mp2k-LFO-speed-and-sf2-LFO-speed-comparison.html).
-- CC115: LFO speed in MP2K is determined by both the LFOS setting *and* the current BPM. There is no way for an SF2 modulator to read the current BPM of the Midi file, so instead a CC115 is placed on every track every time there is a BPM change in order to keep the LFO speed accurate to MP2K. The value of CC115 is the BPM divided by 4 (Midi CCs can only store a limited range of numbers).
-- CC26: LFO delay. When this is greater than zero, every time a note plays, there will be a delay before LFO starts. The higher the number, the greater the delay.
-- CC110: The first of two Midi CCs that take the place of MP2K MODT. MP2K MODT is a single event that determines if the LFO will be pitch (vibrato), volume (tremolo), or pan position (autopan). Because of the limitations of SF2 modulators, we need a separate CC to enable and disable each of these LFO types. CC110 controls pitch (vibrato) LFO type. **When CC110 is 0, pitch LFO type is enabled; when CC110 is 127 (max), pitch LFO type is disabled**. On MP2K, when no MODT event is used, LFO type defaults to pitch; using 0 as the "on" value for CC110 ensures the same is true in Midi and SF2.
-- CC111: The second of two Midi CCs that take the place of MP2K MODT. CC111 controls volume (tremolo) LFO type. **When CC111 is 127, volume LFO type is enabled; when CC111 is 0, volume LFO type is disabled**. The reason the on and off values for CC110 and CC111 are different is to ensure that if neither CC110 or CC111 is set, the Midi and SF2 will default to pitch LFO type just like MP2K.  
-Although Midi makes it possible to enable 2 kinds of LFO at the same time, please do not do this because it is not accurate to MP2K and it will cause issues if you try to run the Midi through [Midi2AGB](https://github.com/Thysbelon/midi2agb).  
-In order for a Midi to successfully be converted by [Midi2AGB](https://github.com/Thysbelon/midi2agb), CC110 and CC111 *must* be grouped together, and the order of them must be CC110 *then* CC111.  
-There is no Midi CC to set LFO type to pan position because it is impossible to do this with SF2 modulators. Whenever there is pan position LFO in an MP2K song, song_ripper will use CC110 and CC111 to disable pitch and volume LFO.
-- CC24: Detune. This doesn't have any effect on the sound of the Midi and SF2, as an RPN 1 event is used to do detune instead. CC24 is still important if you plan on converting your Midi into MP2K, as only CC24 will be detected by Midi2AGB. A value of 64 is normal pitch, 0 is one semitone lower, and 127 is one semitone higher.
-- "rev=???": This is a text event that controls what the global reverb of the song will be after being converted by Midi2AGB. It has no effect on the sound of the Midi and SF2.
-- "pri=???": This is a text event that controls what the global priority of the song will be after being converted by Midi2AGB. Priority is a setting used by a GBA game engine to determine whether or not sound effects should interrupt this song. It has no effect on the sound of the Midi and SF2.
-- "nat=???": This is a text event that controls whether Midi2AGB will alter the values of all volume events to approximate Midi-like loudness in MP2K, or leave them as is. It has no effect on the sound of the Midi and SF2. gba-mus-ripper always tries to preserve the volume levels of the original MP2K song, either by changing the volume event values, or by adding a modulator to the SF2 when raw is used. It is recommend to *not* change the "nat" event.
-
-#### Explanation of RPN Events
-
-[RecordingBlogs' explanation of RPN](https://www.recordingblogs.com/wiki/midi-registered-parameter-number-rpn)
-
 ### 4) Sound Font Ripper
 
 Dumps a sound bank (or a list of sound banks) from a GBA game which is using the MP2K sound engine to SoundFont 2 (.sf2) format. You'd typically use this to get a SoundFont dump of data within a GBA game directly without dumping any other data.
@@ -168,24 +189,7 @@ IMPORTANT NOTE: You need to leave the included file `psg_data.raw` and `goldensu
 
 ---
 
-## HOWTO:
-
-### Playback converted MIDIs
-
-Both MIDI and SF2 are widely used standards so there are a wide range of programs supporting these.
-
-I recommend using a synthesizer that uses the FluidSynth library.   
-FluidSynth is a pedantic midi and SF2 synthesizer library that focuses on following the midi and SF2 standard closely. It supports modulators in SF2 files, which this program uses to have pitch and volume LFO sound accurate to GBA. I always use FluidSynth when testing this program.
-
-[VLC Media Player has a midi plugin that uses FluidSynth](https://wiki.videolan.org/Midi/). This plugin also supports choosing whatever soundfont file you want (either through the GUI, or you can run VLC from the command line with `vlc --soundfont input.sf2 input.midi` to temporarily change the soundfont).
-
-For viewing and editing midi files, I recommend using [Reaper](https://www.reaper.fm/) (import midi with a separate track for each channel), [FluidSynthPlugin](https://github.com/prof-spock/FluidSynthPlugin), and [SWS actions to quickly copy and paste FluidSynthPlugin to all tracks](https://forums.cockos.com/showpost.php?p=1793337&postcount=4).
-
-Another option for editing midi files is using MidiEditor connected to QSynth (GUI for the FluidSynth program).
-
-I still need to research how to connect QSynth to Reaper.
-
-### Compile the GBA Mus Ripper suite
+## How to Compile the GBA Mus Ripper Suite
 
 Compilation is the act of turning human-readable source code into machine code that a computer can run. Ready-to-run builds are in the releases section. Compilation is *only* neccessary if you are a developer who wishes to make modifications to this program, or there is no release build for your platform.
 
