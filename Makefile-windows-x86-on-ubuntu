@@ -24,7 +24,7 @@ YAMLCPP_SRC_FILES = src/yaml-cpp/src/$(wildcard *.cpp)
 all: $(shell mkdir build-w) $(shell mkdir bin-w) bin-w/mp2ktool.exe bin-w/song_ripper.exe bin-w/sound_font_ripper.exe bin-w/gba_mus_ripper.exe
 
 bin-w/mp2ktool.exe: src/mp2ktool/mp2ktool.cpp src/mp2ktool/mp2kcomm.cpp src/mp2ktool/agbm4a.cpp src/mp2ktool/mp2kcomm.h src/mp2ktool/agbm4a.h
-	$(CPPC2) src/mp2ktool/mp2ktool.cpp src/mp2ktool/mp2kcomm.cpp src/mp2ktool/agbm4a.cpp -o bin-w/mp2ktool
+	$(CPPC2) -static src/mp2ktool/mp2ktool.cpp src/mp2ktool/mp2kcomm.cpp src/mp2ktool/agbm4a.cpp -o bin-w/mp2ktool # why does this break with "undefined reference to memsearch" when I use WHOLE?
 
 bin-w/song_ripper.exe: src/song_ripper.cpp src/midi.hpp build-w/midi.o
 	$(CPPC) $(FLAGS) $(WHOLE) src/song_ripper.cpp build-w/midi.o -o bin-w/song_ripper

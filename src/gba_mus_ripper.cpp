@@ -97,8 +97,12 @@ static std::string dec4(unsigned int n)
 	}   
 }
 
-static uint32_t getSoundTable(std::string prg_prefix, std::string inGBA_path){ 
+static uint32_t getSoundTable(std::string prg_prefix, std::string inGBA_path){
+	#ifdef WIN32
+	std::string mp2ktoolCmd = "\"\"" + prg_prefix + "mp2ktool\" songtable \"" + inGBA_path + "\"\"";
+	#else
 	std::string mp2ktoolCmd = prg_prefix + "mp2ktool songtable \"" + inGBA_path + "\"";
+	#endif
 	printf("DEBUG: going to call popen(%s)\n", mp2ktoolCmd.c_str());
 	FILE *mp2ktoolFile = popen(mp2ktoolCmd.c_str(), "r"); // https://stackoverflow.com/questions/125828/capturing-stdout-from-a-system-command-optimally
 
