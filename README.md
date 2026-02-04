@@ -6,7 +6,7 @@ README originally written by Bregalad; edited by Thysbelon.
 
 Downloads are available in the [releases section](https://github.com/Thysbelon/gba-mus-ripper/releases) on the right of this repository's GitHub homepage.
 
-GBA Mus Ripper is a suite of programs to rip music from Game Boy Advance (GBA) games using the MusicPlayer2000 a.k.a. "Sappy" sound engine, a [really common engine among commercial GBA games](https://vgmpf.com/Wiki/index.php?title=User:IgoreshaZhu/GBA_sound_drivers#MusicPlayer2000.2FSappy_.28Nintendo.29).
+GBA Mus Ripper is a suite of programs to rip music from Game Boy Advance (GBA) games using the MusicPlayer2000 a.k.a. "Sappy" sound engine, a [really common engine among commercial GBA games](https://vgmpf.com/Wiki/index.php?title=Game_Boy_Advance_sound_drivers#MusicPlayer2000.2FSappy_.28Nintendo.2FSMASH.29).
 
 ## Applications:
 
