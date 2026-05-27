@@ -13,7 +13,7 @@ GBA Mus Ripper is a suite of programs to rip music from Game Boy Advance (GBA) g
 - Listen to GBA music with a higher bit depth than 8 and no white noise.
 - Apply the instrument set from a GBA game to another midi file.
 - Simply get sheet music of a GBA game's tracks.
-- Edit a song for a romhack by editing its Midi conversion, then convert it back to MP2K and inject it into the rom with [Midi2AGB](https://github.com/Thysbelon/midi2agb) and [gba-song-assembler](https://github.com/Thysbelon/gba-song-assembler). (The options `-xg -sb -rc -raw` should be used for this purpose)
+- Edit a song for a romhack by editing its Midi conversion, then convert it back to MP2K format and inject it into the rom with [Midi2AGB](https://github.com/Thysbelon/midi2agb) and [gba-song-assembler](https://github.com/Thysbelon/gba-song-assembler) (The options `-xg -sb -rc -raw` should be used for this purpose). This method is also useful for creating [SiIvagunner "rips"](https://www.siivagunner.wiki/wiki/Rip) that sound accurate to the GBA; ["Map - Kuru Kuru Kururin"](https://www.youtube.com/watch?v=jhxEDQ6VEcc) is a SiIvagunner rip that I created using this method, the [rip's project files](https://github.com/Thysbelon/gba-mus-ripper/tree/gh-pages/Map-Kuru-Kuru-Kururin-Octopus-Garden-Project-Files) are in the gh-pages branch of this repository.
 
 The tools come in the form of 4 separate executable files.
 
