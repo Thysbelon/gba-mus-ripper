@@ -144,7 +144,7 @@ static void build_instrument(const inst_data inst)
 				add_attenuation_preset(&preset_zone);
 				preset_zone.set_instrument(insPointer);
 				//sf2->add_new_preset_generator(SFGenerator::instrument, i);
-				preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
+				//preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
 				new_preset.AddZone(preset_zone);
 				std::shared_ptr<SFPreset> shared_preset = std::make_shared<SFPreset>(new_preset);
 				sf2->AddPreset(shared_preset);
@@ -166,7 +166,7 @@ static void build_instrument(const inst_data inst)
 					SFPreset new_preset(name, uint16_t(current_instrument), uint16_t(current_bank));
 					SFPresetZone preset_zone;
 					preset_zone.set_instrument(insPointer);
-					preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
+					//preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
 					new_preset.AddZone(preset_zone);
 					std::shared_ptr<SFPreset> shared_preset = std::make_shared<SFPreset>(new_preset);
 					sf2->AddPreset(shared_preset);
@@ -184,7 +184,7 @@ static void build_instrument(const inst_data inst)
 				SFPreset new_preset(name, uint16_t(current_instrument), uint16_t(current_bank));
 				SFPresetZone preset_zone;
 				preset_zone.set_instrument(insPointer);
-				preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
+				//preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
 				new_preset.AddZone(preset_zone);
 				std::shared_ptr<SFPreset> shared_preset = std::make_shared<SFPreset>(new_preset);
 				sf2->AddPreset(shared_preset);
@@ -203,7 +203,7 @@ static void build_instrument(const inst_data inst)
 					SFPreset new_preset(name, uint16_t(current_instrument), uint16_t(current_bank));
 					SFPresetZone preset_zone;
 					preset_zone.set_instrument(insPointer);
-					preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
+					//preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
 					new_preset.AddZone(preset_zone);
 					std::shared_ptr<SFPreset> shared_preset = std::make_shared<SFPreset>(new_preset);
 					sf2->AddPreset(shared_preset);
@@ -222,7 +222,7 @@ static void build_instrument(const inst_data inst)
 				preset_zone.set_instrument(insPointer);
 				// Add initial attenuation preset to balance volume between sampled and GB instruments
 				add_attenuation_preset(&preset_zone);
-				preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
+				//preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
 				new_preset.AddZone(preset_zone);
 				std::shared_ptr<SFPreset> shared_preset = std::make_shared<SFPreset>(new_preset);
 				sf2->AddPreset(shared_preset);
@@ -240,7 +240,7 @@ static void build_instrument(const inst_data inst)
 				// Add initial attenuation preset to balance volume between sampled and GB instruments
 				add_attenuation_preset(&preset_zone);
 				preset_zone.set_instrument(insPointer);
-				preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
+				//preset_zone.SetGenerator(SFGeneratorItem(SFGenerator::kInstrument, i));
 				//printf("%d\n", preset_zone.has_instrument());
 				new_preset.AddZone(preset_zone);
 				std::shared_ptr<SFPreset> shared_preset = std::make_shared<SFPreset>(new_preset);
