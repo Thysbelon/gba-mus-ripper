@@ -89,7 +89,7 @@ For example, there is no Midi CC that is labelled as a way to control the speed 
 
 A list of all special undefined midi CCs, and what they are set to control, is listed below.
 
-**NOTICE: a lot of SF2 synthesizer daw plugins (vst, lv2)** ***do not*** **support modulators.** Please use one of the options listed in the section ["Playback converted MIDIs"](#playback-converted-midis).
+**NOTICE: a lot of SF2 synthesizer daw plugins (vst, lv2)** ***do not*** **support modulators.** Please use one of the options listed in the section ["How To Playback converted MIDIs"](#how-to-playback-converted-midis).
 
 - CC21: LFO speed. The higher the number, the faster that LFO (vibrato or tremolo) will be. Takes the place of the MP2K event LFOS. If you'd like to see exactly how LFOS or CC21 relates to LFO speed, please refer to this [simple LFOS-CC21-Hertz Comparison webapp I made](https://thysbelon.github.io/gba-mus-ripper/mp2k-LFO-speed-and-sf2-LFO-speed-comparison.html).
 - CC115: LFO speed in MP2K is determined by both the LFOS setting *and* the current BPM. There is no way for an SF2 modulator to read the current BPM of the Midi file, so instead a CC115 is placed on every track every time there is a BPM change in order to keep the LFO speed accurate to MP2K. The value of CC115 is the BPM divided by 4 (Midi CCs can only store a limited range of numbers).
