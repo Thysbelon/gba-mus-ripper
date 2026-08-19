@@ -202,32 +202,36 @@ void MIDI::add_pitch_bend(int chn, char value)
 //Add RPN event
 void MIDI::add_RPN(int chn, int16_t type, int16_t value)
 {
-	if (last_rpn_type[chn] != type || last_type[chn] != 0)
-	{
+	//if (last_rpn_type[chn] != type || last_type[chn] != 0) {
 		last_rpn_type[chn] = type;
 		last_type[chn] = 0;
-		add_event(CONTROLLER, chn, 101, type>>7);
 		add_event(CONTROLLER, chn, 100, type&0x7f);
-	}
-	add_event(CONTROLLER, chn, 6, value >> 7);
+		add_event(CONTROLLER, chn, 101, type>>7);
+	//}
+	add_event(CONTROLLER, chn, 6, value >> 7); // Coarse Data Entry
 
-	if ((value & 0x7f) != 0)
-		add_event(CONTROLLER, chn, 38, value & 0x7f);
+	//if ((value & 0x7f) != 0)
+		add_event(CONTROLLER, chn, 38, value & 0x7f); // Fine Data Entry
+	
+	add_event(CONTROLLER, chn, 100, 0x7f); // end of RPN sequence
+	add_event(CONTROLLER, chn, 101, 0x7f);
 }
 
 //Add NRPN event
 void MIDI::add_NRPN(int chn, int16_t type, int16_t value)
 {
-	if (last_nrpn_type[chn] != type || last_type[chn] != 1)
-	{
+	//if (last_nrpn_type[chn] != type || last_type[chn] != 1) {
 		last_nrpn_type[chn] = type;
 		last_type[chn] = 1;
-		add_event(CONTROLLER, chn, 99, type>>7);
 		add_event(CONTROLLER, chn, 98, type&0x7f);
-	}
+		add_event(CONTROLLER, chn, 99, type>>7);
+	//}
 	add_event(CONTROLLER, chn, 6, value >> 7);
-	if ((value & 0x7f) != 0)
+	//if ((value & 0x7f) != 0)
 		add_event(CONTROLLER, chn, 38, value & 0x7f);
+	
+	add_event(CONTROLLER, chn, 98, 0x7f); // end of NRPN sequence
+	add_event(CONTROLLER, chn, 99, 0x7f);
 }
 
 void MIDI::add_marker(const char *text)
