@@ -72,11 +72,18 @@ FluidSynth is a pedantic midi and SF2 synthesizer library that focuses on follow
 
 [VLC Media Player has a midi plugin that uses FluidSynth](https://wiki.videolan.org/Midi/). This plugin also supports choosing whatever soundfont file you want (either through the GUI, or you can run VLC from the command line with `vlc --soundfont input.sf2 input.midi` to temporarily change the soundfont).
 
-For viewing and editing midi files, I recommend using [Reaper](https://www.reaper.fm/) (import midi with a separate track for each channel), [FluidSynthPlugin](https://github.com/prof-spock/FluidSynthPlugin), and [SWS actions to quickly copy and paste FluidSynthPlugin to all tracks](https://forums.cockos.com/showpost.php?p=1793337&postcount=4).
+For viewing and editing midi files, I recommend using [Reaper](https://www.reaper.fm/) (import midi with a separate track for each channel), [juicysfplugin](https://github.com/Birch-san/juicysfplugin), and [SWS actions to quickly copy and paste juicysfplugin to all tracks](https://forums.cockos.com/showpost.php?p=1793337&postcount=4).      
+([FluidSynthPlugin](https://github.com/prof-spock/FluidSynthPlugin) can also be used as an alternative to juicysfplugin.)     
+(Notice for Linux users: I can successfully run juicysfplugin by using the Windows version of the plugin with yabridge 5.1.1 and wine-9.0 (Ubuntu 9.0~repack-4build3).)
 
-Another option for editing midi files is using MidiEditor connected to QSynth (GUI for the FluidSynth program).
+Another option for editing midi files is using MidiEditor connected to Qsynth (GUI for the FluidSynth program).
 
-I still need to research how to connect QSynth to Reaper.
+Qsynth can also be used as a Midi hardware output for REAPER:    
+- Top Menu Bar > Options > Preferences... > Audio > Midi Outputs      
+Right-click the virtual midi device, then click "Enable output" and "Send clock to output".
+- At the bottom track display, where REAPER displays a vertical volume slider and display for each track, click on the button with colorful diagonal lines; the button will say "Sends, Receives and Hardware Output Options" when you hover over it.     <img width="1920" height="1065" alt="Screenshot of Reaper that points to the location of the Hardware Output button." src="https://github.com/user-attachments/assets/10eb5b96-1ce4-41d3-8d2f-b2289d6b43a3" />     
+- Under "MIDI Hardware Output" change the drop-down menu from "&lt;no output&gt;" to "virtual".
+- When changing from one song to another, remember to restart Qsynth.
 
 
 ## Explanation of Special MP2K Midi CCs
