@@ -19,7 +19,13 @@ jobs:
       with:
         submodules: true
     - name: make
-      run: make
+      run: |
+        make
+        mkdir linux-release
+        cp bin/* linux-release/
+        cp -r data linux-release/
+        cp README.md linux-release/
+        cp LICENSE.txt linux-release/
     - name: Set outputs
       id: vars
       run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -27,13 +33,11 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: gba-mus-ripper-Linux-x86_64-${{steps.vars.outputs.sha_short}}.zip
-        path: |
-          bin/*
-          **/data/* # preserve "data" folder hierarchy
-          README.md
-          LICENSE.txt
+        path: linux-release/*
     - name: Clean
-      run: make clean
+      run: |
+        rm -rf linux-release
+        make clean
     - name: Download llvm-mingw
       uses: dsaltares/fetch-gh-release-asset@master
       with:
@@ -41,18 +45,18 @@ jobs:
         version: 'tags/20250114' # later versions are untested
         file: 'llvm-mingw-20250114-msvcrt-ubuntu-20.04-x86_64.tar.xz'
         token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Extract and add llvm-mingw binaries to PATH
-      run: |
+    - name: make (Windows)
+      run: | 
         tar -xf llvm-mingw-20250114-msvcrt-ubuntu-20.04-x86_64.tar.xz
         export PATH=llvm-mingw-20250114-msvcrt-ubuntu-20.04-x86_64/bin:$PATH
-    - name: make (Windows)
-      run: make -f Makefile-windows-x86-on-ubuntu
+        make -f Makefile-windows-x86-on-ubuntu
+        mkdir windows-release
+        cp bin-w/* windows-release/
+        cp -r data windows-release/
+        cp README.md windows-release/
+        cp LICENSE.txt windows-release/
     - name: Upload Windows build artifact
       uses: actions/upload-artifact@v4
       with:
         name: gba-mus-ripper-Windows-x86_64-${{steps.vars.outputs.sha_short}}.zip
-        path: |
-          bin-w/*
-          **/data/* # preserve "data" folder hierarchy
-          README.md
-          LICENSE.txt
+        path: windows-release/*
