@@ -11,10 +11,10 @@ jobs:
   linux:
     runs-on: ubuntu-latest
     steps:
-    #- name: Install packages
-    #  run: |
-    #    sudo apt-get update
-    #    sudo apt-get install -y portaudio19-dev libsndfile1-dev
+    - name: Install packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake
     - uses: actions/checkout@v4
       with:
         submodules: true
