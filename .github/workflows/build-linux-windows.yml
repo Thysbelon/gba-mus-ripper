@@ -20,7 +20,7 @@ jobs:
         submodules: true
     - name: make
       run: |
-        make
+        make -j 4
         mkdir linux-release
         cp bin/* linux-release/
         cp -r data linux-release/
@@ -49,7 +49,7 @@ jobs:
       run: | 
         tar -xf llvm-mingw-20250114-msvcrt-ubuntu-20.04-x86_64.tar.xz
         export PATH=llvm-mingw-20250114-msvcrt-ubuntu-20.04-x86_64/bin:$PATH
-        make -f Makefile-windows-x86-on-ubuntu
+        make -f Makefile-windows-x86-on-ubuntu -j 4
         mkdir windows-release
         cp bin-w/* windows-release/
         cp -r data windows-release/
