@@ -17,39 +17,45 @@ WHOLE=-s -fwhole-program -static
 SF2CUTE_SRC_FILES = src/sf2cute/src/sf2cute/$(wildcard *.cpp) # TODO include *.hpp files too?
 YAMLCPP_SRC_FILES = src/yaml-cpp/src/$(wildcard *.cpp)
 
-all: $(shell mkdir build) $(shell mkdir bin) bin/mp2ktool bin/song_ripper bin/sound_font_ripper bin/gba_mus_ripper
+all: build bin bin/mp2ktool bin/song_ripper bin/sound_font_ripper bin/gba_mus_ripper
 
-bin/mp2ktool: src/mp2ktool/mp2ktool.cpp src/mp2ktool/mp2kcomm.cpp src/mp2ktool/agbm4a.cpp src/mp2ktool/mp2kcomm.h src/mp2ktool/agbm4a.h
+build:
+	mkdir -p build
+
+bin:
+	mkdir -p bin
+
+bin/mp2ktool: src/mp2ktool/mp2ktool.cpp src/mp2ktool/mp2kcomm.cpp src/mp2ktool/agbm4a.cpp src/mp2ktool/mp2kcomm.h src/mp2ktool/agbm4a.h | bin
 	$(CPPC2) -static src/mp2ktool/mp2ktool.cpp src/mp2ktool/mp2kcomm.cpp src/mp2ktool/agbm4a.cpp -o bin/mp2ktool # why does this break with "undefined reference to memsearch" when I use WHOLE?
 
-bin/song_ripper: src/song_ripper.cpp src/midi.hpp build/midi.o
+bin/song_ripper: src/song_ripper.cpp src/midi.hpp build/midi.o | bin
 	$(CPPC) $(FLAGS) $(WHOLE) src/song_ripper.cpp build/midi.o -o bin/song_ripper
 
-bin/sound_font_ripper: build/sound_font_ripper.o build/gba_samples.o build/gba_instr.o src/sf2cute/build/libsf2cute.a
+bin/sound_font_ripper: build/sound_font_ripper.o build/gba_samples.o build/gba_instr.o src/sf2cute/build/libsf2cute.a | bin
 	$(CPPC) $(FLAGS) $(WHOLE) build/gba_samples.o build/gba_instr.o build/sound_font_ripper.o src/sf2cute/build/libsf2cute.a -o bin/sound_font_ripper
 
-bin/gba_mus_ripper: src/gba_mus_ripper.cpp src/hex_string.hpp src/yaml-cpp/build/libyaml-cpp.a
+bin/gba_mus_ripper: src/gba_mus_ripper.cpp src/hex_string.hpp src/yaml-cpp/build/libyaml-cpp.a | bin
 	$(CPPC) $(FLAGS) $(WHOLE) -I./src/yaml-cpp/include/ src/gba_mus_ripper.cpp src/yaml-cpp/build/libyaml-cpp.a -o bin/gba_mus_ripper
 
-build/midi.o: src/midi.cpp src/midi.hpp
+build/midi.o: src/midi.cpp src/midi.hpp | build
 	$(CPPC) $(FLAGS) -c src/midi.cpp -o build/midi.o
 
-build/gba_samples.o : src/gba_samples.cpp src/gba_samples.hpp src/hex_string.hpp
+build/gba_samples.o : src/gba_samples.cpp src/gba_samples.hpp src/hex_string.hpp | build
 	$(CPPC) $(FLAGS) -c src/gba_samples.cpp -o build/gba_samples.o
 
-build/gba_instr.o : src/gba_instr.cpp src/gba_instr.hpp src/hex_string.hpp src/gba_samples.hpp
+build/gba_instr.o : src/gba_instr.cpp src/gba_instr.hpp src/hex_string.hpp src/gba_samples.hpp | build
 	$(CPPC) $(FLAGS) -c src/gba_instr.cpp -o build/gba_instr.o
 
-build/sound_font_ripper.o: src/sound_font_ripper.cpp src/gba_instr.hpp src/hex_string.hpp
+build/sound_font_ripper.o: src/sound_font_ripper.cpp src/gba_instr.hpp src/hex_string.hpp | build
 	$(CPPC) $(FLAGS) -c src/sound_font_ripper.cpp -o build/sound_font_ripper.o
 
 src/sf2cute/build/libsf2cute.a: $(SF2CUTE_SRC_FILES)
 	$(CMAKE) -S src/sf2cute -B src/sf2cute/build
-	$(MAKE) --directory=src/sf2cute/build
+	$(MAKE) --directory=src/sf2cute/build -j 4
 
 src/yaml-cpp/build/libyaml-cpp.a: $(YAMLCPP_SRC_FILES)
 	$(CMAKE) -S src/yaml-cpp -B src/yaml-cpp/build
-	$(MAKE) --directory=src/yaml-cpp/build
+	$(MAKE) --directory=src/yaml-cpp/build -j 4
 
 clean:
 	rm -f *.o *.s *.i *.ii
