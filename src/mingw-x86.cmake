@@ -6,7 +6,12 @@ set(CMAKE_C_COMPILER   x86_64-w64-mingw32-gcc)
 set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
 
 # where is the target environment located
-set(CMAKE_FIND_ROOT_PATH  ../../../llvm-mingw-20250114-msvcrt-ubuntu-20.04-x86_64)
+execute_process(
+	COMMAND which "x86_64-w64-mingw32-gcc"
+	OUTPUT_VARIABLE LLVM_MINGW_PATH
+)
+string(REPLACE "/bin/x86_64-w64-mingw32-gcc" "" LLVM_MINGW_PATH "${LLVM_MINGW_PATH}")
+set(CMAKE_FIND_ROOT_PATH  "${LLVM_MINGW_PATH}")
 
 # adjust the default behavior of the FIND_XXX() commands:
 # search programs in the host environment
