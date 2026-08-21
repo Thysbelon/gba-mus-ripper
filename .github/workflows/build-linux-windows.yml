@@ -1,0 +1,58 @@
+name: Linux and Windows Build
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+    #- name: Install packages
+    #  run: |
+    #    sudo apt-get update
+    #    sudo apt-get install -y portaudio19-dev libsndfile1-dev
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: make
+      run: make
+    - name: Set outputs
+      id: vars
+      run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+    - name: Upload Linux build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: gba-mus-ripper-Linux-x86_64-${{steps.vars.outputs.sha_short}}.zip
+        path: |
+          /bin/*
+          **/data/* # preserve "data" folder hierarchy
+          README.md
+          LICENSE.txt
+    - name: Clean
+      run: make clean
+    - name: Download llvm-mingw
+      uses: dsaltares/fetch-gh-release-asset@master
+      with:
+        repo: 'mstorsjo/llvm-mingw'
+        version: 'tags/20250114' # later versions are untested
+        file: 'llvm-mingw-20250114-msvcrt-ubuntu-20.04-x86_64.tar.xz'
+        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Extract and add llvm-mingw binaries to PATH
+      run: |
+        tar -xf llvm-mingw-20250114-msvcrt-ubuntu-20.04-x86_64.tar.xz
+        export PATH=llvm-mingw-20250114-msvcrt-ubuntu-20.04-x86_64/bin:$PATH
+    - name: make (Windows)
+      run: make -f Makefile-windows-x86-on-ubuntu
+    - name: Upload Windows build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: gba-mus-ripper-Windows-x86_64-${{steps.vars.outputs.sha_short}}.zip
+        path: |
+          /bin-w/*
+          **/data/* # preserve "data" folder hierarchy
+          README.md
+          LICENSE.txt
